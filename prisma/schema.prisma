@@ -1,0 +1,280 @@
+// ===============================================
+// Paws&Co. — Prisma PostgreSQL Schema Definition
+// An Internet-based Near Real-time Dog Tracking System
+// ===============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  UNKNOWN
+}
+
+enum PetSpecies {
+  DOG
+  CAT
+  OTHER
+}
+
+enum NetworkType {
+  NB_IOT
+  LTE_CAT_M1
+  WIFI
+  OFFLINE
+}
+
+enum GpsStatus {
+  FIX_3D
+  FIX_2D
+  SEARCHING
+  OFFLINE
+}
+
+enum AlertType {
+  ZONE_EXIT
+  ZONE_ENTER
+  LOW_BATTERY
+  DEVICE_OFFLINE
+  DEVICE_ONLINE
+  SOS
+  SYSTEM
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum LocationEventType {
+  MOVING
+  STOPPED
+  ENTERED_ZONE
+  LEFT_ZONE
+  AT_REST
+  LOW_BATTERY
+  SOS_TRIGGERED
+}
+
+// 1. User Model
+model User {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  passwordHash       String?
+  displayName        String
+  role               Role     @default(USER)
+  avatarUrl          String?
+  phoneNumber        String?
+  preferredLanguage  String   @default("th")
+  emailNotifications Boolean  @default(true)
+  smsNotifications   Boolean  @default(false)
+  
+  pets               Pet[]
+  alerts             Alert[]
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("users")
+}
+
+// 2. Pet Model
+model Pet {
+  id               String            @id @default(cuid())
+  userId           String
+  name             String
+  species          PetSpecies        @default(DOG)
+  breed            String
+  age              Float             @default(1)
+  gender           Gender            @default(MALE)
+  weight           Float             @default(10)
+  healthNotes      String?           @db.Text
+  primaryPhotoUrl  String
+  batterySaver     Boolean           @default(false)
+  proAlerts        Boolean           @default(true)
+  qrCodeId         String            @unique
+  isLost           Boolean           @default(false)
+
+  // Relationships
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId         String?           @unique
+  device           Device?           @relation(fields: [deviceId], references: [id])
+  photos           PetPhoto[]
+  safeZones        SafeZone[]
+  vaccinations     Vaccination[]
+  locationHistory  LocationHistory[]
+  alerts           Alert[]
+  publicProfile    PublicPetProfile?
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([qrCodeId])
+  @@map("pets")
+}
+
+// 3. Pet Photo Model
+model PetPhoto {
+  id        String   @id @default(cuid())
+  petId     String
+  url       String
+  isPrimary Boolean  @default(false)
+  caption   String?
+  
+  pet       Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([petId])
+  @@map("pet_photos")
+}
+
+// 4. IoT Device Model (LILYGO T-SIM7080G-S3 ESP32-S3)
+model Device {
+  id                    String      @id @default(cuid())
+  serialNumber          String      @unique
+  model                 String      @default("LILYGO T-SIM7080G-S3")
+  imei                  String?     @unique
+  macAddress            String      @unique
+  firmwareVersion       String      @default("v1.4.2-paws")
+  batteryLevel          Int         @default(100)
+  batteryVoltage        Float?      @default(4.2)
+  signalStrength        Int         @default(100)
+  isOnline              Boolean     @default(true)
+  lastSeenAt            DateTime    @default(now())
+  networkType           NetworkType @default(LTE_CAT_M1)
+  gpsStatus             GpsStatus   @default(FIX_3D)
+  updateIntervalSeconds Int         @default(10)
+  powerSaveMode         Boolean     @default(false)
+
+  pet                   Pet?
+
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  @@map("devices")
+}
+
+// 5. Safe Zone Model (Geofence)
+model SafeZone {
+  id        String   @id @default(cuid())
+  petId     String
+  name      String
+  latitude  Float
+  longitude Float
+  radius    Float    @default(300) // Radius in meters
+  isActive  Boolean  @default(true)
+
+  pet       Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([petId])
+  @@map("safe_zones")
+}
+
+// 6. Location History Model (Telemetry Stream)
+model LocationHistory {
+  id             String            @id @default(cuid())
+  petId          String
+  latitude       Float
+  longitude      Float
+  altitude       Float?
+  speed          Float?
+  heading        Float?
+  accuracy       Float?
+  batteryLevel   Int
+  signalStrength Int?
+  eventType      LocationEventType @default(MOVING)
+  note           String?
+  timestamp      DateTime          @default(now())
+
+  pet            Pet               @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@index([petId, timestamp])
+  @@map("location_history")
+}
+
+// 7. Alert Notification Model
+model Alert {
+  id           String        @id @default(cuid())
+  userId       String
+  petId        String
+  petName      String
+  petAvatarUrl String?
+  type         AlertType
+  title        String
+  message      String        @db.Text
+  severity     AlertSeverity @default(INFO)
+  isRead       Boolean       @default(false)
+  latitude     Float?
+  longitude    Float?
+  timestamp    DateTime      @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pet          Pet           @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([petId])
+  @@map("alerts")
+}
+
+// 8. Vaccination Model
+model Vaccination {
+  id               String    @id @default(cuid())
+  petId            String
+  vaccineName      String
+  administeredDate DateTime
+  nextDueDate      DateTime?
+  veterinarian     String?
+  clinicName       String?
+  batchNumber      String?
+  notes            String?   @db.Text
+
+  pet              Pet       @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@index([petId])
+  @@map("vaccinations")
+}
+
+// 9. Public Pet Profile Model (QR Tag Landing Page)
+model PublicPetProfile {
+  id               String     @id @default(cuid())
+  petId            String     @unique
+  qrCodeId         String     @unique
+  displayName      String
+  species          PetSpecies @default(DOG)
+  breed            String
+  photoUrl         String
+  secondaryPhotos  String[]
+  contactPhone     String
+  contactEmail     String?
+  allowDirectCall  Boolean    @default(true)
+  allowFoundReport Boolean    @default(true)
+  specialNeeds     String?    @db.Text
+  rewardNote       String?
+  customMessage    String?    @db.Text
+  isLost           Boolean    @default(false)
+
+  pet              Pet        @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@index([qrCodeId])
+  @@map("public_pet_profiles")
+}

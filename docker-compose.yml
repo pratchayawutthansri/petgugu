@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (optional — only needed when DEMO_MODE=false)
+  db:
+    image: postgres:16-alpine
+    container_name: pawsandco-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pawsandco
+      POSTGRES_USER: pawsandco
+      POSTGRES_PASSWORD: pawsandco
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pawsandco']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Web Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pawsandco-app
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      - NEXT_PUBLIC_APP_NAME=Paws&Co.
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - NEXT_PUBLIC_DEMO_MODE=true
+      - NEXT_PUBLIC_DEFAULT_LANGUAGE=th
+      - JWT_SECRET=pawsandco-docker-secret-key-2026
+      - DATABASE_URL=postgresql://pawsandco:pawsandco@db:5432/pawsandco?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

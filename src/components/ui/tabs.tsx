@@ -1,0 +1,103 @@
+'use client';
+
+import React from 'react';
+import { cn } from '@/lib/utils';
+
+export interface TabItem {
+  id: string;
+  label: string;
+  icon?: React.ReactNode;
+  badge?: number | string;
+}
+
+export interface TabsProps {
+  tabs: TabItem[];
+  activeTab: string;
+  onChange: (id: string) => void;
+  className?: string;
+  variant?: 'pill' | 'underline';
+}
+
+export function Tabs({
+  tabs,
+  activeTab,
+  onChange,
+  className,
+  variant = 'pill',
+}: TabsProps) {
+  if (variant === 'underline') {
+    return (
+      <div className={cn('border-b border-surface-200 flex space-x-6 overflow-x-auto custom-scrollbar', className)}>
+        {tabs.map((tab) => {
+          const isActive = tab.id === activeTab;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => onChange(tab.id)}
+              className={cn(
+                'flex items-center gap-2 pb-3.5 pt-2 text-sm font-medium border-b-2 whitespace-nowrap transition-colors touch-target',
+                isActive
+                  ? 'border-primary text-primary font-semibold'
+                  : 'border-transparent text-surface-500 hover:text-surface-800 hover:border-surface-300'
+              )}
+            >
+              {tab.icon && <span className="flex-shrink-0">{tab.icon}</span>}
+              <span>{tab.label}</span>
+              {tab.badge !== undefined && (
+                <span
+                  className={cn(
+                    'px-2 py-0.5 text-xs rounded-full font-semibold',
+                    isActive ? 'bg-primary-100 text-primary-700' : 'bg-surface-200 text-surface-600'
+                  )}
+                >
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Pill variant
+  return (
+    <div
+      className={cn(
+        'inline-flex p-1 bg-surface-200/80 rounded-xl gap-1 overflow-x-auto custom-scrollbar max-w-full',
+        className
+      )}
+    >
+      {tabs.map((tab) => {
+        const isActive = tab.id === activeTab;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => onChange(tab.id)}
+            className={cn(
+              'flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-150 whitespace-nowrap touch-target',
+              isActive
+                ? 'bg-white text-primary shadow-sm font-semibold'
+                : 'text-surface-600 hover:text-surface-900 hover:bg-white/50'
+            )}
+          >
+            {tab.icon && <span className="flex-shrink-0">{tab.icon}</span>}
+            <span>{tab.label}</span>
+            {tab.badge !== undefined && (
+              <span
+                className={cn(
+                  'px-1.5 py-0.2 text-xs rounded-full font-semibold',
+                  isActive ? 'bg-primary-100 text-primary-700' : 'bg-surface-300 text-surface-700'
+                )}
+              >
+                {tab.badge}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}

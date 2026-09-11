@@ -1,0 +1,245 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===================================
+   Paws&Co. — Global Styles & Design System
+   =================================== */
+
+/* --- Google Fonts --- */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap');
+
+/* --- Base Resets --- */
+@layer base {
+  :root {
+    --color-primary: 25 61 79;         /* field navy #193D4F */
+    --color-secondary: 53 101 77;      /* moss #35654D */
+    --color-success: 54 127 96;        /* trail green #367F60 */
+    --color-warning: 182 111 45;       /* ochre #B66F2D */
+    --color-danger: 164 71 62;         /* brick #A4473E */
+    --color-surface: 247 247 242;       /* warm stone #F7F7F2 */
+    
+    --sidebar-width: 280px;
+    --bottom-nav-height: 72px;
+    --header-height: 64px;
+  }
+
+  * {
+    @apply border-surface-200;
+  }
+
+  html {
+    @apply scroll-smooth antialiased;
+    max-width: 100%;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  body {
+    @apply bg-surface-50 text-surface-900 font-sans text-base leading-relaxed;
+    min-height: 100dvh;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Prevent iOS auto-zoom on input focus */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  button,
+  a,
+  select,
+  summary,
+  [role='button'] {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  /* Focus ring for accessibility */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary;
+  }
+
+  /* Remove default focus for mouse users */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --- Component Utilities --- */
+@layer components {
+  /* Touch-friendly target */
+  .touch-target {
+    @apply min-h-touch min-w-touch;
+  }
+
+  /* Card base style */
+  .card {
+    @apply bg-white rounded-2xl shadow-card border border-surface-200 transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-card-hover hover:border-primary-200;
+  }
+
+  /* Solid utility surfaces: restrained blur only where content overlays a map. */
+  .glass-panel {
+    @apply bg-white/95 border border-surface-200 shadow-card;
+  }
+
+  .glass-dark {
+    @apply bg-primary-950/95 border border-primary-800 shadow-dropdown;
+  }
+
+  /* Page container */
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6;
+  }
+
+  /* Page title */
+  .page-title {
+    @apply text-2xl sm:text-3xl font-extrabold text-surface-900 tracking-tight;
+  }
+
+  /* Page subtitle */
+  .page-subtitle {
+    @apply text-sm sm:text-base text-surface-500 mt-1;
+  }
+
+  /* Section heading */
+  .section-heading {
+    @apply text-lg font-bold text-surface-800 tracking-tight;
+  }
+
+  /* Status dot indicator */
+  .status-dot {
+    @apply w-2.5 h-2.5 rounded-full;
+  }
+
+  .status-dot-online {
+    @apply status-dot bg-success-500 ring-2 ring-success-100;
+  }
+
+  .status-dot-offline {
+    @apply status-dot bg-surface-400;
+  }
+
+  .status-dot-warning {
+    @apply status-dot bg-warning-500 ring-2 ring-warning-100;
+  }
+
+  .status-dot-danger {
+    @apply status-dot bg-danger-500 ring-2 ring-danger-100;
+  }
+
+  /* Scrollbar styling */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.surface.300') transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-surface-300 rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-surface-400;
+  }
+}
+
+/* --- Utility Overrides --- */
+@layer utilities {
+  /* Hide scrollbar but keep scroll functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Safe area insets for mobile */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Brand text stays solid to avoid a synthetic template look. */
+  .text-gradient-primary {
+    @apply text-primary-700;
+  }
+
+  .text-gradient-accent {
+    @apply text-warning-700;
+  }
+
+  .gradient-border-glow {
+    position: relative;
+  }
+  .gradient-border-glow::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: rgba(25, 61, 79, 0.24);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+/* --- Leaflet Map Overrides --- */
+.leaflet-container {
+  @apply font-sans rounded-2xl;
+  z-index: 1;
+}
+
+.leaflet-control-zoom a {
+  @apply !bg-white !text-surface-700 !border-surface-200 !rounded-xl !shadow-card !transition-colors;
+}
+
+.leaflet-control-zoom a:hover {
+  @apply !bg-surface-50 !text-primary;
+}
+
+.leaflet-popup-content-wrapper {
+  @apply !rounded-2xl !shadow-dropdown !border !border-surface-200/80;
+}
+
+.leaflet-popup-content {
+  @apply !m-0 !p-0;
+}
