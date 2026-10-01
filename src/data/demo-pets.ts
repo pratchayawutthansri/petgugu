@@ -9,9 +9,9 @@ export const DEMO_PETS: Pet[] = [
   {
     id: 'pet_mochi_01',
     userId: 'usr_demo_01',
-    name: 'โมจิ (Mochi)',
+    name: 'โมจิ',
     species: 'DOG',
-    breed: 'โกลเด้น รีทรีฟเวอร์ (Golden Retriever)',
+    breed: 'โกลเด้น รีทรีฟเวอร์',
     age: 3,
     gender: 'MALE',
     weight: 28.5,
@@ -89,9 +89,9 @@ export const DEMO_PETS: Pet[] = [
   {
     id: 'pet_lucky_02',
     userId: 'usr_demo_01',
-    name: 'ลัคกี้ (Lucky)',
+    name: 'ลัคกี้',
     species: 'DOG',
-    breed: 'ชิบะ อินุ (Shiba Inu)',
+    breed: 'ชิบะ อินุ',
     age: 2,
     gender: 'FEMALE',
     weight: 9.8,

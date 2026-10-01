@@ -19,40 +19,35 @@ export function BottomNav() {
 
   const navItems = [
     {
-      name: t('nav.dashboard').split(' ')[0], // Compact name for mobile
-      fullName: t('nav.dashboard'),
+      name: t('nav.dashboard'),
       href: '/dashboard',
       icon: LayoutDashboard,
     },
     {
-      name: t('nav.pets').split(' ')[0],
-      fullName: t('nav.pets'),
+      name: t('nav.pets'),
       href: '/pets',
       icon: PawPrint,
     },
     {
-      name: t('nav.history').split(' ')[0],
-      fullName: t('nav.history'),
+      name: t('nav.history'),
       href: '/history',
       icon: History,
     },
     {
-      name: t('nav.hardware').split(' ')[0],
-      fullName: t('nav.hardware'),
+      name: t('nav.hardware'),
       href: '/hardware',
       icon: Cpu,
     },
     {
-      name: t('nav.settings').split(' ')[0],
-      fullName: t('nav.settings'),
+      name: t('nav.settings'),
       href: '/settings',
       icon: Settings,
     },
   ];
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-sticky bg-surface-50/95 backdrop-blur-md border-t border-surface-200 shadow-bottom-nav pb-safe">
-      <div className="flex items-center justify-around h-[68px] px-2 max-w-lg mx-auto">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-sticky bg-white/95 backdrop-blur-md border-t border-neutral-200/80 shadow-[0_-2px_12px_rgba(0,0,0,0.03)] pb-safe select-none">
+      <div className="flex items-center justify-around h-[64px] px-2 max-w-lg mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive =
@@ -64,17 +59,22 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 rounded-lg transition-colors duration-150 touch-target',
+                'flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 transition-all touch-target',
                 isActive
-                  ? 'text-primary font-bold'
-                  : 'text-surface-400 hover:text-surface-700 active:scale-95'
+                  ? 'text-neutral-900 font-bold'
+                  : 'text-neutral-400 hover:text-neutral-700 active:scale-95'
               )}
-              aria-label={item.fullName}
+              aria-label={item.name}
             >
-              <div className={cn('p-1 rounded-md transition-colors', isActive && 'bg-primary-100 text-primary-800')}>
-                <Icon className="w-5 h-5" />
+              <div
+                className={cn(
+                  'p-1.5 rounded-xl transition-all',
+                  isActive ? 'bg-[#181a20] text-white shadow-xs' : 'text-neutral-500'
+                )}
+              >
+                <Icon className="w-4 h-4" />
               </div>
-              <span className="text-xs leading-none mt-1 truncate max-w-[64px]">
+              <span className="text-[11px] leading-tight mt-1 truncate max-w-[64px]">
                 {item.name}
               </span>
             </Link>

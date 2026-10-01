@@ -9,8 +9,14 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
-  register: (data: { displayName: string; email: string; password: string; phoneNumber?: string }) => Promise<{ success: boolean; error?: string }>;
+  login: (identifier: string, pass: string) => Promise<{ success: boolean; error?: string }>;
+  register: (data: {
+    displayName: string;
+    username?: string;
+    email?: string;
+    password: string;
+    phoneNumber?: string;
+  }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   loginAsDemoAccount: (type?: 'user' | 'admin') => Promise<void>;
 }
@@ -44,10 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkSession();
   }, []);
 
-  const login = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (identifier: string, pass: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
-      const res = await api.login({ email, password: pass });
+      const res = await api.login({ identifier, email: identifier, password: pass });
       if (res.success && res.data?.user) {
         setUser(res.data.user);
         localStorage.setItem('paws_user', JSON.stringify(res.data.user));
@@ -91,6 +97,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       localStorage.removeItem('paws_user');
       setIsLoading(false);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
     }
   };
 

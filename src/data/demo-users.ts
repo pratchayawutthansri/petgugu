@@ -3,8 +3,8 @@ import { User } from '@/types';
 export const DEMO_USERS: User[] = [
   {
     id: 'usr_demo_01',
-    email: 'demo@pawsandco.com',
-    displayName: 'สมชาย ใจดี (Somchai Jaidee)',
+    email: 'somchai@pawsandco.com',
+    displayName: 'สมชาย ใจดี',
     role: 'USER',
     avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80',
     phoneNumber: '081-234-5678',

@@ -27,23 +27,23 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 touch-target select-none focus-visible:outline-2 focus-visible:outline-offset-2';
+      'inline-flex items-center justify-center font-medium rounded-full transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 touch-target select-none focus-visible:outline-2 focus-visible:outline-offset-2';
 
     const variants = {
       primary:
-        'bg-primary text-white hover:bg-primary-700 active:bg-primary-800 shadow-sm focus-visible:outline-primary',
+        'bg-[#181a20] text-white hover:bg-neutral-800 active:bg-black shadow-xs focus-visible:outline-neutral-900',
       secondary:
-        'bg-secondary-100 text-secondary-800 hover:bg-secondary-200 active:bg-secondary-300 focus-visible:outline-secondary',
+        'bg-neutral-100 text-neutral-800 hover:bg-neutral-200 active:bg-neutral-300 focus-visible:outline-neutral-300',
       outline:
-        'border border-surface-300 bg-white text-surface-700 hover:bg-surface-50 active:bg-surface-100 shadow-sm focus-visible:outline-primary',
+        'border border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50 hover:border-neutral-300 active:bg-neutral-100 shadow-2xs focus-visible:outline-neutral-900',
       ghost:
-        'bg-transparent text-surface-600 hover:bg-surface-100 hover:text-surface-900 active:bg-surface-200 focus-visible:outline-primary',
+        'bg-transparent text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 active:bg-neutral-200 focus-visible:outline-neutral-900',
       danger:
-        'bg-danger text-white hover:bg-danger-600 active:bg-danger-700 shadow-sm focus-visible:outline-danger',
+        'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-xs focus-visible:outline-red-600',
       sos:
-        'bg-danger-600 text-white font-bold tracking-wide hover:bg-danger-700 active:bg-danger-800 shadow-modal animate-pulse-soft focus-visible:outline-danger-600',
+        'bg-red-600 text-white font-bold tracking-wide hover:bg-red-700 active:bg-red-800 shadow-modal animate-pulse-soft focus-visible:outline-red-600',
       success:
-        'bg-success text-white hover:bg-success-600 active:bg-success-700 shadow-sm focus-visible:outline-success',
+        'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 shadow-xs focus-visible:outline-emerald-600',
     };
 
     const sizes = {

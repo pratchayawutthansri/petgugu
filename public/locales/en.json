@@ -19,7 +19,7 @@
     "heroTitle": "Protect Your Four-Legged Friend",
     "heroHighlight": "Anytime, Anywhere",
     "heroSubtitle": "Innovative smart tracking collar combining GPS, cellular NB-IoT, and digital QR Code ID for total pet safety and peace of mind.",
-    "ctaPrimary": "Try Live Demo",
+    "ctaPrimary": "Launch Live System",
     "ctaSecondary": "View Live Map",
     "badge": "Pet IoT Technology 2026",
     "featuresTitle": "Key Features Designed for Pet Lovers",
@@ -173,13 +173,13 @@
     "offlineAlert": "Alert when device disconnects for > 1 hour",
     "currentPlan": "Current Plan",
     "planName": "Academic Prototype Edition",
-    "planDesc": "Research project tier — all features unlocked for demonstration.",
+    "planDesc": "Prototype tier — all features unlocked.",
     "maxPets": "Max Pets: 5 (Currently using 2)",
     "maxZones": "Safe Zones: 3 per pet",
     "historyRetention": "Telemetry Retention: 30 days",
     "dangerZone": "Danger Zone",
     "deleteAccount": "Delete Account",
-    "demoNotice": "Account deletion is disabled in Demo Mode."
+    "demoNotice": "Account deletion is disabled for sample accounts."
   },
   "admin": {
     "title": "Admin Dashboard",
@@ -192,9 +192,9 @@
     "petsTable": "Pet Directory",
     "systemHealth": "System Health",
     "apiStatus": "API Gateway: Healthy (HTTP 200 OK)",
-    "dbStatus": "PostgreSQL Database: Connected (Demo Store Active)",
+    "dbStatus": "Database: Connected (Active)",
     "mqttStatus": "MQTT Broker (EMQX / Mosquitto): Ready for Telemetry",
-    "demoBadge": "Academic Prototype Evaluation Mode"
+    "demoBadge": "Prototype Active"
   },
   "public": {
     "title": "Pet Identification (Digital ID Tag)",
@@ -225,10 +225,10 @@
     "rememberMe": "Remember me",
     "loginBtn": "Sign In",
     "registerBtn": "Create Account",
-    "quickDemoUser": "Login as Demo User",
-    "quickDemoAdmin": "Login as Demo Admin",
+    "quickDemoUser": "Login as Pet Owner",
+    "quickDemoAdmin": "Login as Administrator",
     "haveAccount": "Already have an account? Sign in",
-    "noAccount": "Don't have an account? Sign up free",
+    "noAccount": "Don't have an account? Sign up",
     "loginSuccess": "Successfully logged in!",
     "registerSuccess": "Welcome to Paws&Co.!"
   },
@@ -243,6 +243,6 @@
     "status": "Status",
     "active": "Active",
     "inactive": "Inactive",
-    "demoMode": "Demo Mode"
+    "demoMode": "Prototype Active"
   }
 }

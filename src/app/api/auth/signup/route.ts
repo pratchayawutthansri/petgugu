@@ -1,25 +1,31 @@
 import { NextResponse } from 'next/server';
 import { signJWT } from '@/lib/auth';
 import { User } from '@/types';
+import { demoStore } from '@/lib/demo-store';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { displayName, email, password, phoneNumber } = body;
+    const { displayName, email, username, password, phoneNumber } = body;
+    const finalIdentifier = username || email;
 
-    if (!displayName || !email || !password) {
+    if (!displayName || !finalIdentifier || !password) {
       return NextResponse.json(
         { success: false, error: 'กรุณากรอกข้อมูลให้ครบถ้วน' },
         { status: 400 }
       );
     }
 
+    const calculatedEmail = email
+      ? email.toLowerCase().trim()
+      : `${finalIdentifier.toLowerCase().trim()}@pawsandco.com`;
+
     const newUser: User = {
       id: `usr_${Date.now()}`,
-      email: email.toLowerCase().trim(),
+      email: calculatedEmail,
       displayName,
       role: 'USER',
-      phoneNumber,
+      phoneNumber: phoneNumber || '',
       preferredLanguage: 'th',
       emailNotifications: true,
       smsNotifications: false,
@@ -27,6 +33,8 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+
+    demoStore.addUser(newUser);
 
     const token = await signJWT({
       userId: newUser.id,

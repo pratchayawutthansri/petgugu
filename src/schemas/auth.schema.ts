@@ -1,10 +1,9 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-  email: z
+  identifier: z
     .string()
-    .min(1, 'กรุณากรอกอีเมล (Email is required)')
-    .email('รูปแบบอีเมลไม่ถูกต้อง (Invalid email format)'),
+    .min(1, 'กรุณากรอกไอดีผู้ใช้งาน (User ID is required)'),
   password: z
     .string()
     .min(6, 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร (Password must be at least 6 characters)'),
@@ -15,23 +14,28 @@ export const registerSchema = z
   .object({
     displayName: z
       .string()
-      .min(2, 'ชื่อผู้ใช้ต้องมีอย่างน้อย 2 ตัวอักษร (Display name must be at least 2 characters)')
-      .max(50, 'ชื่อผู้ใช้ต้องไม่เกิน 50 ตัวอักษร'),
-    email: z
+      .min(2, 'ชื่อ-นามสกุลต้องมีอย่างน้อย 2 ตัวอักษร')
+      .max(50, 'ชื่อ-นามสกุลต้องไม่เกิน 50 ตัวอักษร'),
+    username: z
       .string()
-      .min(1, 'กรุณากรอกอีเมล (Email is required)')
-      .email('รูปแบบอีเมลไม่ถูกต้อง (Invalid email format)'),
+      .min(3, 'ไอดีต้องมีอย่างน้อย 3 ตัวอักษร')
+      .max(30, 'ไอดีต้องไม่เกิน 30 ตัวอักษร'),
+    phoneNumber: z
+      .string()
+      .min(1, 'กรุณากรอกเบอร์โทรศัพท์')
+      .refine(
+        (val) => {
+          const digits = val.replace(/\D/g, '');
+          return digits.length >= 9 && digits.length <= 15;
+        },
+        { message: 'กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (เช่น 08X-XXX-XXXX)' }
+      ),
     password: z
       .string()
       .min(6, 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร (Password must be at least 6 characters)'),
     confirmPassword: z
       .string()
       .min(1, 'กรุณายืนยันรหัสผ่าน (Please confirm password)'),
-    phoneNumber: z
-      .string()
-      .regex(/^[0-9+ -]{9,15}$/, 'เบอร์โทรศัพท์ไม่ถูกต้อง (Invalid phone number)')
-      .optional()
-      .or(z.literal('')),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'รหัสผ่านไม่ตรงกัน (Passwords do not match)',

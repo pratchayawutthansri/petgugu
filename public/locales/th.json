@@ -5,21 +5,21 @@
     "description": "ปกป้องสัตว์เลี้ยงที่คุณรักด้วยเทคโนโลยีระบุตำแหน่ง GPS + NB-IoT พร้อม QR Code ระบุตัวตนอัจฉริยะ"
   },
   "nav": {
-    "dashboard": "หน้าหลัก (Dashboard)",
-    "pets": "สัตว์เลี้ยงของฉัน (My Pets)",
-    "history": "ประวัติเส้นทาง (History)",
-    "hardware": "อุปกรณ์ฮาร์ดแวร์ (Hardware)",
-    "settings": "ตั้งค่า (Settings)",
-    "admin": "ผู้ดูแลระบบ (Admin)",
-    "signIn": "เข้าสู่ระบบ (Sign In)",
-    "getStarted": "เริ่มต้นใช้งาน (Get Started)",
-    "logout": "ออกจากระบบ (Sign Out)"
+    "dashboard": "หน้าหลัก",
+    "pets": "สัตว์เลี้ยงของฉัน",
+    "history": "ประวัติเส้นทาง",
+    "hardware": "อุปกรณ์ฮาร์ดแวร์",
+    "settings": "การตั้งค่า",
+    "admin": "ผู้ดูแลระบบ",
+    "signIn": "เข้าสู่ระบบ",
+    "getStarted": "เริ่มต้นใช้งาน",
+    "logout": "ออกจากระบบ"
   },
   "landing": {
     "heroTitle": "ปกป้องเพื่อนสี่ขาของคุณ",
     "heroHighlight": "ได้ทุกที่ ทุกเวลา",
     "heroSubtitle": "นวัตกรรมปลอกคอติดตามสุนัขอัจฉริยะ ผสานเทคโนโลยี GPS, NB-IoT และ QR Code เพื่อความปลอดภัยสูงสุดของสัตว์เลี้ยงคุณ",
-    "ctaPrimary": "เริ่มทดลองใช้งานฟรี (Demo)",
+    "ctaPrimary": "เข้าสู่ระบบติดตาม (Live Tracking)",
     "ctaSecondary": "ดูหน้าแผนที่สด (Live Map)",
     "badge": "เทคโนโลยี IoT สำหรับสัตว์เลี้ยง 2026",
     "featuresTitle": "ฟีเจอร์เด่นที่ออกแบบมาเพื่อคนรักสัตว์",
@@ -179,7 +179,7 @@
     "historyRetention": "เก็บบันทึกประวัติพิกัด: 30 วัน",
     "dangerZone": "พื้นที่อันตราย (Danger Zone)",
     "deleteAccount": "ลบบัญชีผู้ใช้งาน",
-    "demoNotice": "ในโหมด Demo การลบบัญชีจะถูกปิดการทำงานไว้"
+    "demoNotice": "ฟังก์ชันการลบบัญชีถูกระงับไว้สำหรับบัญชีตัวอย่าง"
   },
   "admin": {
     "title": "แดชบอร์ดผู้ดูแลระบบ (Admin Dashboard)",
@@ -192,9 +192,9 @@
     "petsTable": "รายชื่อสัตว์เลี้ยงทั้งหมด",
     "systemHealth": "สถานะระบบ (System Health)",
     "apiStatus": "API Gateway: พร้อมทำงาน (HTTP 200 OK)",
-    "dbStatus": "ฐานข้อมูล PostgreSQL: เชื่อมต่อสำเร็จ (Demo Mode)",
+    "dbStatus": "ฐานข้อมูล: เชื่อมต่อสำเร็จ (Active)",
     "mqttStatus": "MQTT Broker (EMQX/Mosquitto): พร้อมรับข้อมูล Telemetry",
-    "demoBadge": "ระบบสาธิตสำหรับการประเมินโครงงาน (Prototype Demo)"
+    "demoBadge": "ระบบต้นแบบพร้อมใช้งาน (Prototype Active)"
   },
   "public": {
     "title": "ข้อมูลสัตว์เลี้ยง (Digital Pet ID Tag)",
@@ -225,8 +225,8 @@
     "rememberMe": "จดจำการเข้าสู่ระบบ",
     "loginBtn": "เข้าสู่ระบบ",
     "registerBtn": "สร้างบัญชีใหม่",
-    "quickDemoUser": "เข้าสู่ระบบด้วยบัญชี Demo (ผู้ใช้ทั่วไป)",
-    "quickDemoAdmin": "เข้าสู่ระบบด้วยบัญชี Admin (ผู้ดูแลระบบ)",
+    "quickDemoUser": "เข้าสู่ระบบในฐานะเจ้าของสัตว์เลี้ยง",
+    "quickDemoAdmin": "เข้าสู่ระบบในฐานะผู้ดูแลระบบ",
     "haveAccount": "มีบัญชีอยู่แล้ว? เข้าสู่ระบบที่นี่",
     "noAccount": "ยังไม่มีบัญชี? ลงทะเบียนฟรี",
     "loginSuccess": "เข้าสู่ระบบสำเร็จ!",
@@ -243,6 +243,6 @@
     "status": "สถานะ",
     "active": "ใช้งานอยู่",
     "inactive": "ปิดใช้งาน",
-    "demoMode": "โหมดทดสอบ (Demo Mode)"
+    "demoMode": "ระบบต้นแบบ (Prototype)"
   }
 }

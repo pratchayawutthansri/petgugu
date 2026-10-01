@@ -301,7 +301,7 @@ export default function AddPetPage() {
             {/* Quick Preset Selector for Demo */}
             <div className="pt-3 border-t border-surface-100">
               <label className="block text-xs font-semibold text-surface-500 mb-2">
-                เลือกรูปตัวอย่างเพิ่มเติม (Demo Gallery):
+                เลือกรูปภาพตัวอย่าง (Photo Gallery):
               </label>
               <div className="flex flex-wrap gap-2">
                 {PRESET_PET_PHOTOS.map((presetUrl, i) => (

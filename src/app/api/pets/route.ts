@@ -1,9 +1,18 @@
 import { NextResponse } from 'next/server';
 import { demoStore } from '@/lib/demo-store';
+import { cookies } from 'next/headers';
+import { verifyJWT } from '@/lib/auth';
+
+async function getUserId() {
+  const token = cookies().get('paws_auth_token')?.value;
+  if (!token) return 'usr_demo_01';
+  const payload = await verifyJWT(token);
+  return payload?.userId || 'usr_demo_01';
+}
 
 export async function GET() {
   try {
-    const pets = demoStore.getPets();
+    const pets = demoStore.getPets(await getUserId());
     return NextResponse.json({
       success: true,
       data: pets,
@@ -29,7 +38,7 @@ export async function POST(request: Request) {
     }
 
     const newPet = demoStore.createPet({
-      userId: 'usr_demo_01',
+      userId: await getUserId(),
       name,
       species: species || 'DOG',
       breed,

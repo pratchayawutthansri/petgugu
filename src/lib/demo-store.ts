@@ -64,6 +64,11 @@ class DemoStore {
     return [...this.users];
   }
 
+  public addUser(user: User): User {
+    this.users.push(user);
+    return user;
+  }
+
   public getUserById(id: string): User | undefined {
     return this.users.find((u) => u.id === id);
   }

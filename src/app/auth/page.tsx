@@ -9,34 +9,84 @@ import { loginSchema, registerSchema, LoginInput, RegisterInput } from '@/schema
 import { useAuth } from '@/contexts/auth-context';
 import { useLanguage } from '@/contexts/language-context';
 import { useToast } from '@/contexts/toast-context';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Tabs } from '@/components/ui/tabs';
 import {
-  Mail,
   Lock,
   User as UserIcon,
   Phone,
-  Sparkles,
-  ArrowRight,
-  ShieldCheck,
   Eye,
   EyeOff,
+  ArrowRight,
   ArrowLeft,
-  CheckCircle2,
-  Radio,
   PawPrint,
-  Heart,
-  Shield,
-  Zap,
-  MapPin,
-  Check,
+  IdCard,
 } from 'lucide-react';
+
+function BrandLogo({ inverse = false }: { inverse?: boolean }) {
+  return (
+    <div className="flex items-center gap-2.5 select-none">
+      <div
+        className={`w-9 h-9 rounded-full flex items-center justify-center ${
+          inverse ? 'bg-white text-[#181a20]' : 'bg-[#181a20] text-white'
+        }`}
+      >
+        <PawPrint className="w-5 h-5 fill-current" />
+      </div>
+      <span
+        className={`text-xl font-bold tracking-tight ${
+          inverse ? 'text-white' : 'text-neutral-900'
+        }`}
+      >
+        Paw&amp;Co.
+      </span>
+    </div>
+  );
+}
+
+function PawWatermark({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={className}
+      fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <ellipse cx="45" cy="65" rx="16" ry="24" transform="rotate(-25 45 65)" />
+      <ellipse cx="80" cy="40" rx="17" ry="26" transform="rotate(-8 80 40)" />
+      <ellipse cx="125" cy="42" rx="17" ry="26" transform="rotate(8 125 42)" />
+      <ellipse cx="158" cy="68" rx="16" ry="24" transform="rotate(25 158 68)" />
+      <path d="M 60 115 C 45 130 45 155 65 172 C 85 185 120 185 140 172 C 160 155 160 130 145 115 C 135 105 125 110 102 110 C 80 110 70 105 60 115 Z" />
+    </svg>
+  );
+}
+
+function GoogleIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        fill="#34A853"
+      />
+      <path
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+        fill="#EA4335"
+      />
+    </svg>
+  );
+}
 
 export default function AuthPage() {
   const router = useRouter();
   const { login, register: registerUser, loginAsDemoAccount } = useAuth();
-  const { t, locale } = useLanguage();
+  const { locale } = useLanguage();
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -48,8 +98,8 @@ export default function AuthPage() {
   const loginForm = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'demo@pawsandco.com',
-      password: 'demo1234',
+      identifier: '',
+      password: '',
       rememberMe: true,
     },
   });
@@ -59,29 +109,29 @@ export default function AuthPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       displayName: '',
-      email: '',
+      username: '',
+      phoneNumber: '',
       password: '',
       confirmPassword: '',
-      phoneNumber: '',
     },
   });
 
   const handleLoginSubmit = async (data: LoginInput) => {
     setIsSubmitting(true);
     try {
-      const res = await login(data.email, data.password);
+      const res = await login(data.identifier, data.password);
       if (res.success) {
         showToast({
           type: 'success',
-          title: 'เข้าสู่ระบบสำเร็จ',
-          message: t('auth.loginSuccess'),
+          title: locale === 'th' ? 'เข้าสู่ระบบสำเร็จ' : 'Login Successful',
+          message: locale === 'th' ? 'ยินดีต้อนรับกลับสู่ Paw&Co.' : 'Welcome back to Paw&Co.',
         });
         router.push('/dashboard');
       } else {
         showToast({
           type: 'error',
-          title: 'เข้าสู่ระบบไม่สำเร็จ',
-          message: res.error || 'กรุณาตรวจสอบอีเมลและรหัสผ่าน',
+          title: locale === 'th' ? 'เข้าสู่ระบบไม่สำเร็จ' : 'Login Failed',
+          message: res.error || (locale === 'th' ? 'กรุณาตรวจสอบไอดีและรหัสผ่าน' : 'Invalid ID or password'),
         });
       }
     } finally {
@@ -92,19 +142,24 @@ export default function AuthPage() {
   const handleRegisterSubmit = async (data: RegisterInput) => {
     setIsSubmitting(true);
     try {
-      const res = await registerUser(data);
+      const res = await registerUser({
+        displayName: data.displayName,
+        username: data.username,
+        phoneNumber: data.phoneNumber,
+        password: data.password,
+      });
       if (res.success) {
         showToast({
           type: 'success',
-          title: 'ลงทะเบียนสำเร็จ',
-          message: t('auth.registerSuccess'),
+          title: locale === 'th' ? 'ลงทะเบียนสำเร็จ' : 'Registration Successful',
+          message: locale === 'th' ? 'สร้างบัญชีผู้ใช้เรียบร้อยแล้ว' : 'Account created successfully',
         });
         router.push('/dashboard');
       } else {
         showToast({
           type: 'error',
-          title: 'ลงทะเบียนไม่สำเร็จ',
-          message: res.error || 'เกิดข้อผิดพลาดในการลงทะเบียน',
+          title: locale === 'th' ? 'ลงทะเบียนไม่สำเร็จ' : 'Registration Failed',
+          message: res.error || (locale === 'th' ? 'เกิดข้อผิดพลาดในการลงทะเบียน' : 'Failed to create account'),
         });
       }
     } finally {
@@ -112,314 +167,444 @@ export default function AuthPage() {
     }
   };
 
-  const handleQuickDemo = async (type: 'user' | 'admin') => {
+  // Google Sign-In Handler
+  const handleGoogleSignIn = async () => {
+    setIsSubmitting(true);
+    try {
+      await loginAsDemoAccount('user');
+      showToast({
+        type: 'success',
+        title: locale === 'th' ? 'เข้าสู่ระบบด้วย Google สำเร็จ' : 'Google Sign-In Successful',
+        message: locale === 'th' ? 'เชื่อมต่อบัญชี Google เข้าสู่ระบบเรียบร้อยแล้ว' : 'Connected via Google account',
+      });
+      router.push('/dashboard');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Quick login for prototype testing
+  const handleQuickLogin = async (type: 'user' | 'admin') => {
     await loginAsDemoAccount(type);
     showToast({
       type: 'success',
-      title: 'Demo Mode',
-      message: `เข้าสู่ระบบในฐานะ ${type === 'admin' ? 'ผู้ดูแลระบบ (Admin)' : 'เจ้าของสัตว์เลี้ยง (สมชาย ใจดี)'} เรียบร้อยแล้ว`,
+      title: locale === 'th' ? 'เข้าสู่ระบบสำเร็จ' : 'Login Successful',
+      message:
+        locale === 'th'
+          ? `เข้าสู่ระบบในฐานะ ${type === 'admin' ? 'ผู้ดูแลระบบ (Admin)' : 'เจ้าของสัตว์เลี้ยง (สมชาย ใจดี)'}`
+          : `Signed in as ${type === 'admin' ? 'Administrator' : 'Pet Owner'}`,
     });
     router.push('/dashboard');
   };
 
   return (
-    <div className="min-h-dvh bg-surface-50 flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden text-surface-900 font-sans">
-      {/* Ambient background glows */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-gradient-to-tr from-primary-400/10 via-secondary-300/10 to-transparent rounded-full blur-[140px]" />
-      </div>
-
-      {/* Back to Home Link */}
-      <div className="max-w-5xl mx-auto w-full mb-5 relative z-10">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-xs font-bold text-surface-600 hover:text-primary-600 transition-colors bg-white/90 px-4 py-2 rounded-full border border-surface-200 shadow-subtle hover:border-primary-300"
-        >
-          <ArrowLeft className="w-4 h-4 text-primary-600" />
-          <span>{locale === 'th' ? 'กลับสู่หน้าแรก (Back to Home)' : 'Back to Home'}</span>
-        </Link>
-      </div>
-
-      {/* Main Dual-Pane Card */}
-      <div className="max-w-5xl mx-auto w-full rounded-3xl bg-white border border-surface-200/90 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10">
-        {/* Left Branding Art Pane (5 Cols on Desktop) */}
-        <div className="lg:col-span-5 bg-gradient-to-br from-primary-700 via-indigo-800 to-primary-950 p-8 sm:p-10 text-white flex flex-col justify-between relative overflow-hidden border-b lg:border-b-0 lg:border-r border-surface-800">
-          {/* Ambient Lighting Orbs */}
-          <div className="absolute -top-10 -right-10 w-48 h-48 bg-secondary-400/20 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-primary-400/20 rounded-full blur-2xl pointer-events-none" />
-
-          {/* Brand Header */}
-          <div className="relative z-10 space-y-6">
-            <Link href="/" className="inline-flex items-center gap-3.5 group">
-              <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white font-bold text-2xl shadow-inner border border-white/25 group-hover:scale-105 transition-transform">
-                🐾
-              </div>
-              <div>
-                <span className="font-extrabold text-2xl tracking-tight text-white block">
-                  Paws<span className="text-secondary-300">&</span>Co.
-                </span>
-                <span className="text-xs text-primary-200 font-semibold">
-                  IoT Dog Tracking System
-                </span>
-              </div>
-            </Link>
-
-            <div className="space-y-2 pt-2">
-              <h3 className="text-2xl sm:text-3xl font-extrabold leading-tight text-white tracking-tight">
-                {locale === 'th' ? 'ปกป้องเพื่อนสี่ขาที่คุณรัก ได้ทุกที่ ทุกเวลา' : 'Protect Your Beloved Dogs Anywhere'}
-              </h3>
-              <p className="text-xs sm:text-sm text-primary-100/80 leading-relaxed font-normal">
-                {locale === 'th'
-                  ? 'เข้าถึงตำแหน่งสัตว์เลี้ยงแบบใกล้เคียงเวลาจริง จัดการเขตปลอดภัย และสร้างป้ายชื่อดิจิทัล QR Tag ได้ในระบบเดียว'
-                  : 'Access near real-time pet locations, manage geofences, and configure digital QR tags in one unified platform.'}
-              </p>
-            </div>
-          </div>
-
-          {/* Feature Highlights on Left Pane */}
-          <div className="relative z-10 my-8 space-y-3">
-            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 text-xs shadow-subtle">
-              <div className="w-9 h-9 rounded-xl bg-success/20 text-success-300 flex items-center justify-center flex-shrink-0">
-                <Radio className="w-4 h-4 text-success-300 animate-pulse" />
-              </div>
-              <div>
-                <span className="font-bold text-white block text-sm">
-                  {locale === 'th' ? 'ส่งพิกัดทุก 10 วินาที' : '10s GPS Updates'}
-                </span>
-                <span className="text-[11px] text-primary-200">
-                  {locale === 'th' ? 'ระบุพิกัดดาวเทียมแม่นยำด้วย GPS + NB-IoT' : 'High precision satellite positioning'}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 text-xs shadow-subtle">
-              <div className="w-9 h-9 rounded-xl bg-secondary-400/20 text-secondary-200 flex items-center justify-center flex-shrink-0">
-                <ShieldCheck className="w-4 h-4 text-secondary-300" />
-              </div>
-              <div>
-                <span className="font-bold text-white block text-sm">
-                  {locale === 'th' ? 'พื้นที่ปลอดภัยอัจฉริยะ' : 'Smart Geofencing'}
-                </span>
-                <span className="text-[11px] text-primary-200">
-                  {locale === 'th' ? 'รับแจ้งเตือนทันทีเมื่อสัตว์เลี้ยงออกนอกบ้าน' : 'Instant alerts when escaping boundary'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Testimonial / Dog Avatar Quote */}
-          <div className="relative z-10 pt-4 border-t border-white/15 flex items-center gap-3.5">
-            <img
-              src="https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80"
-              alt="Mochi"
-              className="w-11 h-11 rounded-full object-cover border-2 border-white/40 shadow-card"
-            />
-            <div className="text-xs text-primary-100">
-              <p className="font-bold text-white text-sm">โมจิ (Mochi) & ลัคกี้ (Lucky)</p>
-              <p className="text-primary-200/80 text-[11px]">สุนัขตัวอย่างในระบบ Demo พร้อมทดสอบ</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[#f8f9fa] flex flex-col justify-center items-center p-4 sm:p-6 lg:p-10 text-neutral-900 selection:bg-neutral-900 selection:text-white">
+      {/* Outer Card Container */}
+      <div className="w-full max-w-4xl bg-white rounded-[28px] border border-neutral-200/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5 sm:p-7 lg:p-8">
+        {/* Top Back Link (Desktop & Mobile) */}
+        <div className="mb-4 sm:mb-5">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-neutral-500 hover:text-neutral-900 font-medium transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>{locale === 'th' ? 'กลับสู่หน้าหลัก' : 'Back to Home'}</span>
+          </Link>
         </div>
 
-        {/* Right Form Pane (7 Cols on Desktop) */}
-        <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-between bg-white">
-          <div>
-            {/* Header / Tabs */}
-            <div className="flex flex-col items-center sm:items-start mb-6">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-surface-900 tracking-tight">
-                {activeTab === 'login' ? t('auth.signInTitle') : t('auth.signUpTitle')}
-              </h2>
-              <p className="text-xs sm:text-sm text-surface-500 mt-1">
-                {activeTab === 'login' ? t('auth.signInSubtitle') : t('auth.signUpSubtitle')}
-              </p>
-
-              <div className="mt-6 w-full flex justify-center sm:justify-start">
-                <Tabs
-                  tabs={[
-                    { id: 'login', label: t('nav.signIn') },
-                    { id: 'register', label: t('auth.registerBtn') },
-                  ]}
-                  activeTab={activeTab}
-                  onChange={(id) => setActiveTab(id as 'login' | 'register')}
-                />
-              </div>
+        {/* Content Container: Split Layout on Desktop */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
+          {/* ================= LEFT SIDE: Dark Branding Box (Desktop Only) ================= */}
+          <div className="hidden lg:flex lg:col-span-5 bg-[#181a20] rounded-[22px] p-8 lg:p-10 text-white relative overflow-hidden flex-col justify-between min-h-[510px]">
+            {/* Logo */}
+            <div className="relative z-10">
+              <BrandLogo inverse={true} />
             </div>
 
-            {/* Login Form */}
-            {activeTab === 'login' && (
-              <form onSubmit={loginForm.handleSubmit(handleLoginSubmit)} className="space-y-4">
-                <Input
-                  label={t('auth.emailLabel')}
-                  type="email"
-                  placeholder="demo@pawsandco.com"
-                  leftIcon={<Mail className="w-4 h-4 text-surface-400" />}
-                  error={loginForm.formState.errors.email?.message}
-                  {...loginForm.register('email')}
-                />
+            {/* Dynamic Headline & Subtitle */}
+            <div className="relative z-10 my-auto py-8">
+              {activeTab === 'login' ? (
+                <>
+                  <h2 className="text-2xl lg:text-[26px] font-bold text-white leading-snug tracking-tight">
+                    {locale === 'th' ? (
+                      <>
+                        ปกป้องเพื่อนสี่ขาที่คุณรัก
+                        <br />
+                        ได้ทุกที่ ตลอด 24 ชม.
+                      </>
+                    ) : (
+                      <>
+                        Protect Your Loved Pets
+                        <br />
+                        Anywhere, 24/7
+                      </>
+                    )}
+                  </h2>
+                  <p className="text-neutral-400 text-xs sm:text-sm mt-3.5 leading-relaxed max-w-xs">
+                    {locale === 'th'
+                      ? 'เข้าถึงความช่วยเหลือและบริการดูแลสัตว์เลี้ยงของคุณ ได้อย่างสะดวก รวดเร็ว'
+                      : 'Instant access to tracking, care services and smart alerts for your pets.'}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl lg:text-[26px] font-bold text-white leading-snug tracking-tight">
+                    {locale === 'th' ? (
+                      <>
+                        ดูแลน้องเหมือน
+                        <br />
+                        ครอบครัวเดียวกัน
+                      </>
+                    ) : (
+                      <>
+                        Care for Your Pets
+                        <br />
+                        Like Family
+                      </>
+                    )}
+                  </h2>
+                  <p className="text-neutral-400 text-xs sm:text-sm mt-3.5 leading-relaxed max-w-xs">
+                    {locale === 'th'
+                      ? 'พื้นที่สำหรับคนรักสัตว์ ให้การดูแลเรื่องเล็กๆ เป็นเรื่องง่ายขึ้น'
+                      : 'The dedicated platform making everyday pet safety and wellness simple.'}
+                  </p>
+                </>
+              )}
+            </div>
 
-                <Input
-                  label={t('auth.passwordLabel')}
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  leftIcon={<Lock className="w-4 h-4 text-surface-400" />}
-                  rightIcon={
+            {/* Empty footer spacer for positioning */}
+            <div className="h-4 relative z-10" />
+
+            {/* Faint Paw Print Silhouette Watermark in Bottom-Left */}
+            <PawWatermark className="absolute -bottom-8 -left-8 w-60 h-60 text-white/[0.04] pointer-events-none select-none" />
+          </div>
+
+          {/* ================= RIGHT SIDE: Clean Form Area (Desktop & Mobile) ================= */}
+          <div className="lg:col-span-7 flex flex-col justify-center px-1 sm:px-4 lg:px-6 py-2">
+            {/* Mobile Header (Shown on < lg screens) */}
+            <div className="lg:hidden mb-6">
+              <BrandLogo inverse={false} />
+              {activeTab === 'login' ? (
+                <div className="mt-4">
+                  <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 leading-tight">
+                    {locale === 'th' ? (
+                      <>
+                        ปกป้องเพื่อนสี่ขาที่คุณรัก
+                        <br />
+                        ได้ทุกที่ ตลอด 24 ชม.
+                      </>
+                    ) : (
+                      'Protect Your Loved Pets 24/7'
+                    )}
+                  </h2>
+                  <p className="text-xs text-neutral-500 mt-1.5 leading-relaxed">
+                    {locale === 'th'
+                      ? 'เข้าถึงความช่วยเหลือและบริการดูแลสัตว์เลี้ยงของคุณ ได้อย่างสะดวก รวดเร็ว'
+                      : 'Instant access to tracking and care services.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <h2 className="text-xl sm:text-2xl font-bold text-neutral-900">
+                    {locale === 'th' ? 'สมัครสมาชิก' : 'Sign Up'}
+                  </h2>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {locale === 'th'
+                      ? 'สร้างบัญชีเพื่อเริ่มดูแลน้องๆ ของคุณ'
+                      : 'Create an account to start caring for your pets.'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Form Title & Subtitle */}
+            <div className="hidden lg:block mb-5">
+              {activeTab === 'login' ? (
+                <>
+                  <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">
+                    {locale === 'th' ? 'เข้าสู่ระบบ Paw&Co.' : 'Sign in to Paw&Co.'}
+                  </h1>
+                  <p className="text-xs sm:text-sm text-neutral-500 mt-1.5">
+                    {locale === 'th'
+                      ? 'ยินดีต้อนรับกลับมา! กรุณากรอกข้อมูลเพื่อเข้าสู่ระบบ'
+                      : 'Welcome back! Please enter your credentials.'}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">
+                    {locale === 'th' ? 'สมัครสมาชิก' : 'Sign Up'}
+                  </h1>
+                  <p className="text-xs sm:text-sm text-neutral-500 mt-1.5">
+                    {locale === 'th'
+                      ? 'สร้างบัญชีเพื่อเริ่มดูแลน้องๆ ของคุณ'
+                      : 'Create an account to start managing your pets.'}
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* ================= LOGIN FORM ================= */}
+            {activeTab === 'login' && (
+              <form onSubmit={loginForm.handleSubmit(handleLoginSubmit)} className="space-y-3">
+                {/* ID Input */}
+                <div>
+                  <div className="relative rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
+                    <UserIcon className="w-4 h-4 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder={locale === 'th' ? 'ไอดี' : 'User ID / Username'}
+                      className="w-full pl-11 pr-4 py-3.5 text-sm text-neutral-900 placeholder:text-neutral-400 bg-transparent rounded-xl outline-none"
+                      {...loginForm.register('identifier')}
+                    />
+                  </div>
+                  {loginForm.formState.errors.identifier && (
+                    <p className="text-[11px] text-red-600 mt-1 pl-1">
+                      {loginForm.formState.errors.identifier.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Password Input */}
+                <div>
+                  <div className="relative rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
+                    <Lock className="w-4 h-4 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder={locale === 'th' ? 'รหัสผ่าน' : 'Password'}
+                      className="w-full pl-11 pr-11 py-3.5 text-sm text-neutral-900 placeholder:text-neutral-400 bg-transparent rounded-xl outline-none"
+                      {...loginForm.register('password')}
+                    />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="text-surface-400 hover:text-surface-600 touch-target flex items-center justify-center p-1"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 p-1"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
-                  }
-                  error={loginForm.formState.errors.password?.message}
-                  {...loginForm.register('password')}
-                />
+                  </div>
+                  {loginForm.formState.errors.password && (
+                    <p className="text-[11px] text-red-600 mt-1 pl-1">
+                      {loginForm.formState.errors.password.message}
+                    </p>
+                  )}
+                </div>
 
+                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full mt-4 font-extrabold py-3.5 rounded-full text-white bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 shadow-card shadow-primary-500/25 hover:shadow-card-hover transition-all flex items-center justify-center gap-2"
+                  className="w-full mt-3.5 py-3.5 rounded-full text-white bg-[#181a20] hover:bg-neutral-800 active:scale-[0.99] transition-all font-semibold text-sm flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
                 >
-                  <span>{isSubmitting ? 'กำลังเข้าสู่ระบบ...' : t('auth.loginBtn')}</span>
+                  <span>
+                    {isSubmitting
+                      ? locale === 'th'
+                        ? 'กำลังเข้าสู่ระบบ...'
+                        : 'Signing in...'
+                      : locale === 'th'
+                      ? 'เข้าสู่ระบบ'
+                      : 'Sign In'}
+                  </span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
+
+                {/* Divider */}
+                <div className="relative my-3 flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-neutral-200" />
+                  </div>
+                  <span className="relative bg-white px-3 text-[11px] font-medium text-neutral-400">
+                    {locale === 'th' ? 'หรือเข้าสู่ระบบด้วย' : 'or continue with'}
+                  </span>
+                </div>
+
+                {/* Google Sign-in Button */}
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={isSubmitting}
+                  className="w-full py-3 rounded-full border border-neutral-200 bg-white hover:bg-neutral-50 hover:border-neutral-300 active:scale-[0.99] transition-all font-medium text-xs sm:text-sm flex items-center justify-center gap-2.5 text-neutral-700 shadow-2xs"
+                >
+                  <GoogleIcon className="w-4 h-4" />
+                  <span>{locale === 'th' ? 'เข้าสู่ระบบด้วย Google' : 'Sign in with Google'}</span>
+                </button>
+
+                {/* Toggle to Register */}
+                <div className="pt-2 text-center text-xs text-neutral-500">
+                  <span>{locale === 'th' ? 'ยังไม่มีบัญชี? ' : "Don't have an account? "}</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('register')}
+                    className="font-semibold text-neutral-900 hover:underline"
+                  >
+                    {locale === 'th' ? 'สมัครสมาชิก' : 'Sign Up'}
+                  </button>
+                </div>
               </form>
             )}
 
-            {/* Register Form */}
+            {/* ================= REGISTER FORM ================= */}
             {activeTab === 'register' && (
-              <form onSubmit={registerForm.handleSubmit(handleRegisterSubmit)} className="space-y-3.5">
-                <Input
-                  label={t('auth.displayNameLabel')}
-                  type="text"
-                  placeholder="ชื่อ-นามสกุลของคุณ"
-                  leftIcon={<UserIcon className="w-4 h-4 text-surface-400" />}
-                  error={registerForm.formState.errors.displayName?.message}
-                  {...registerForm.register('displayName')}
-                />
+              <form onSubmit={registerForm.handleSubmit(handleRegisterSubmit)} className="space-y-2.5">
+                {/* Display Name Input */}
+                <div>
+                  <div className="relative rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
+                    <UserIcon className="w-4 h-4 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder={locale === 'th' ? 'ชื่อ-นามสกุล' : 'Full Name'}
+                      className="w-full pl-11 pr-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 bg-transparent rounded-xl outline-none"
+                      {...registerForm.register('displayName')}
+                    />
+                  </div>
+                  {registerForm.formState.errors.displayName && (
+                    <p className="text-[11px] text-red-600 mt-0.5 pl-1">
+                      {registerForm.formState.errors.displayName.message}
+                    </p>
+                  )}
+                </div>
 
-                <Input
-                  label={t('auth.emailLabel')}
-                  type="email"
-                  placeholder="yourname@example.com"
-                  leftIcon={<Mail className="w-4 h-4 text-surface-400" />}
-                  error={registerForm.formState.errors.email?.message}
-                  {...registerForm.register('email')}
-                />
+                {/* Username / ID Input */}
+                <div>
+                  <div className="relative rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
+                    <IdCard className="w-4 h-4 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder={locale === 'th' ? 'ไอดีผู้ใช้ (ID)' : 'User ID'}
+                      className="w-full pl-11 pr-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 bg-transparent rounded-xl outline-none"
+                      {...registerForm.register('username')}
+                    />
+                  </div>
+                  {registerForm.formState.errors.username && (
+                    <p className="text-[11px] text-red-600 mt-0.5 pl-1">
+                      {registerForm.formState.errors.username.message}
+                    </p>
+                  )}
+                </div>
 
-                <Input
-                  label="เบอร์โทรศัพท์ (Phone Number)"
-                  type="tel"
-                  placeholder="081-234-5678"
-                  leftIcon={<Phone className="w-4 h-4 text-surface-400" />}
-                  error={registerForm.formState.errors.phoneNumber?.message}
-                  {...registerForm.register('phoneNumber')}
-                />
+                {/* Phone Number Input */}
+                <div>
+                  <div className="relative rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
+                    <Phone className="w-4 h-4 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="tel"
+                      placeholder="08X-XXX-XXXX"
+                      className="w-full pl-11 pr-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 bg-transparent rounded-xl outline-none"
+                      {...registerForm.register('phoneNumber')}
+                    />
+                  </div>
+                  {registerForm.formState.errors.phoneNumber && (
+                    <p className="text-[11px] text-red-600 mt-0.5 pl-1">
+                      {registerForm.formState.errors.phoneNumber.message}
+                    </p>
+                  )}
+                </div>
 
-                <Input
-                  label={t('auth.passwordLabel')}
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="อย่างน้อย 6 ตัวอักษร"
-                  leftIcon={<Lock className="w-4 h-4 text-surface-400" />}
-                  rightIcon={
+                {/* Password Input */}
+                <div>
+                  <div className="relative rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
+                    <Lock className="w-4 h-4 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder={locale === 'th' ? 'รหัสผ่าน' : 'Password'}
+                      className="w-full pl-11 pr-11 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 bg-transparent rounded-xl outline-none"
+                      {...registerForm.register('password')}
+                    />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="text-surface-400 hover:text-surface-600 p-1"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 p-1"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
-                  }
-                  error={registerForm.formState.errors.password?.message}
-                  {...registerForm.register('password')}
-                />
+                  </div>
+                  {registerForm.formState.errors.password && (
+                    <p className="text-[11px] text-red-600 mt-0.5 pl-1">
+                      {registerForm.formState.errors.password.message}
+                    </p>
+                  )}
+                </div>
 
-                <Input
-                  label={t('auth.confirmPasswordLabel')}
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="พิมพ์รหัสผ่านอีกครั้ง"
-                  leftIcon={<Lock className="w-4 h-4 text-surface-400" />}
-                  rightIcon={
+                {/* Confirm Password Input */}
+                <div>
+                  <div className="relative rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
+                    <Lock className="w-4 h-4 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder={locale === 'th' ? 'ยืนยันรหัสผ่าน' : 'Confirm Password'}
+                      className="w-full pl-11 pr-11 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 bg-transparent rounded-xl outline-none"
+                      {...registerForm.register('confirmPassword')}
+                    />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="text-surface-400 hover:text-surface-600 p-1"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 p-1"
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                     >
                       {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
-                  }
-                  error={registerForm.formState.errors.confirmPassword?.message}
-                  {...registerForm.register('confirmPassword')}
-                />
+                  </div>
+                  {registerForm.formState.errors.confirmPassword && (
+                    <p className="text-[11px] text-red-600 mt-0.5 pl-1">
+                      {registerForm.formState.errors.confirmPassword.message}
+                    </p>
+                  )}
+                </div>
 
+                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full mt-2 font-extrabold py-3.5 rounded-full text-white bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 shadow-card shadow-primary-500/25 transition-all"
+                  className="w-full mt-3 py-3.5 rounded-full text-white bg-[#181a20] hover:bg-neutral-800 active:scale-[0.99] transition-all font-semibold text-sm flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
                 >
-                  <span>{isSubmitting ? 'กำลังบันทึก...' : t('auth.registerBtn')}</span>
+                  <span>
+                    {isSubmitting
+                      ? locale === 'th'
+                        ? 'กำลังบันทึก...'
+                        : 'Creating account...'
+                      : locale === 'th'
+                      ? 'สมัครสมาชิก'
+                      : 'Sign Up'}
+                  </span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
+
+                {/* Toggle to Login */}
+                <div className="pt-2 text-center text-xs text-neutral-500">
+                  <span>{locale === 'th' ? 'มีบัญชีอยู่แล้ว? ' : 'Already have an account? '}</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('login')}
+                    className="font-semibold text-neutral-900 underline hover:text-black"
+                  >
+                    {locale === 'th' ? 'เข้าสู่ระบบ' : 'Sign In'}
+                  </button>
+                </div>
               </form>
             )}
           </div>
-
-          {/* Quick Demo Login Cards */}
-          <div className="mt-8 pt-6 border-t border-surface-200/90 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-surface-500 uppercase tracking-wider">
-                เข้าสู่ระบบด่วน (Quick Demo Mode)
-              </span>
-              <span className="text-[11px] font-bold text-primary-700 px-2.5 py-0.5 rounded-full bg-primary-50 border border-primary-200">
-                1-Click Login
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* User Demo Card */}
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('user')}
-                className="p-3.5 rounded-2xl border border-surface-200 bg-surface-50/80 hover:bg-primary-50/50 hover:border-primary-300 hover:shadow-card transition-all text-left flex items-center gap-3.5 group touch-target"
-              >
-                <img
-                  src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80"
-                  alt="Somchai"
-                  className="w-10 h-10 rounded-full object-cover border-2 border-surface-300 flex-shrink-0 group-hover:border-primary-400 transition-colors"
-                />
-                <div className="min-w-0 flex-1">
-                  <span className="text-xs font-extrabold text-surface-900 block truncate group-hover:text-primary-700">
-                    สมชาย (Demo User)
-                  </span>
-                  <span className="text-[11px] text-surface-500 block truncate">
-                    demo@pawsandco.com (2 สุนัข)
-                  </span>
-                </div>
-              </button>
-
-              {/* Admin Demo Card */}
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('admin')}
-                className="p-3.5 rounded-2xl border border-surface-200 bg-surface-50/80 hover:bg-secondary-50/50 hover:border-secondary-300 hover:shadow-card transition-all text-left flex items-center gap-3.5 group touch-target"
-              >
-                <img
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80"
-                  alt="Admin"
-                  className="w-10 h-10 rounded-full object-cover border-2 border-surface-300 flex-shrink-0 group-hover:border-secondary-400 transition-colors"
-                />
-                <div className="min-w-0 flex-1">
-                  <span className="text-xs font-extrabold text-surface-900 block truncate group-hover:text-secondary-700">
-                    ผู้ดูแลระบบ (Admin)
-                  </span>
-                  <span className="text-[11px] text-surface-500 block truncate">
-                    admin@pawsandco.com (Full Control)
-                  </span>
-                </div>
-              </button>
-            </div>
-          </div>
         </div>
+      </div>
+
+      {/* Discreet 1-Click Prototype Testing Bar */}
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-xs text-neutral-400">
+        <span className="text-[11px]">ทดสอบระบบต้นแบบ:</span>
+        <button
+          type="button"
+          onClick={() => handleQuickLogin('user')}
+          className="px-3 py-1 rounded-full bg-white border border-neutral-200 text-neutral-700 hover:text-black hover:border-black transition-all font-medium text-[11px] shadow-xs"
+        >
+          เจ้าของสัตว์เลี้ยง (ไอดี: somchai)
+        </button>
+        <button
+          type="button"
+          onClick={() => handleQuickLogin('admin')}
+          className="px-3 py-1 rounded-full bg-white border border-neutral-200 text-neutral-700 hover:text-black hover:border-black transition-all font-medium text-[11px] shadow-xs"
+        >
+          ผู้ดูแลระบบ (ไอดี: admin)
+        </button>
       </div>
     </div>
   );

@@ -4,19 +4,20 @@ import { verifyDemoCredentials, signJWT } from '@/lib/auth';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const identifier = body.identifier || body.email || body.username;
+    const { password } = body;
 
-    if (!email || !password) {
+    if (!identifier || !password) {
       return NextResponse.json(
-        { success: false, error: 'กรุณากรอกอีเมลและรหัสผ่าน' },
+        { success: false, error: 'กรุณากรอกไอดีและรหัสผ่าน' },
         { status: 400 }
       );
     }
 
-    const user = verifyDemoCredentials(email, password);
+    const user = verifyDemoCredentials(identifier, password);
     if (!user) {
       return NextResponse.json(
-        { success: false, error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' },
+        { success: false, error: 'ไอดีหรือรหัสผ่านไม่ถูกต้อง' },
         { status: 401 }
       );
     }

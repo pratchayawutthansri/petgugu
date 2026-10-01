@@ -7,7 +7,7 @@ import { BottomNav } from './bottom-nav';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh bg-surface-50 flex">
+    <div className="min-h-dvh bg-[#f8f9fa] text-neutral-900 flex selection:bg-neutral-900 selection:text-white">
       {/* Desktop Sidebar */}
       <Sidebar />
 

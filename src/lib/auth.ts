@@ -42,27 +42,37 @@ export async function verifyJWT(token: string): Promise<JWTPayload | null> {
  * Verify mock credentials for Demo Mode
  */
 export function verifyDemoCredentials(
-  email: string,
+  identifierOrEmail: string,
   password: string
 ): User | null {
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalized = identifierOrEmail.trim().toLowerCase();
 
-  // Demo user check
-  if (normalizedEmail === 'demo@pawsandco.com' && password === 'demo1234') {
+  // Primary user check (Somchai)
+  if (
+    (normalized === 'somchai' ||
+      normalized === 'somchai@pawsandco.com' ||
+      normalized === 'demo@pawsandco.com' ||
+      normalized === 'user') &&
+    (password === 'paws1234' || password === 'demo1234')
+  ) {
     return DEMO_USERS[0];
   }
 
   // Admin user check
-  if (normalizedEmail === 'admin@pawsandco.com' && password === 'admin1234') {
+  if (
+    (normalized === 'admin' ||
+      normalized === 'admin@pawsandco.com') &&
+    (password === 'admin1234' || password === 'paws1234')
+  ) {
     return DEMO_USERS[1];
   }
 
-  // In demo mode, allow any valid email + 6+ char password as a virtual user
-  if (email.includes('@') && password.length >= 6) {
+  // Allow any typed ID (min 3 chars) or email with 6+ char password as a user
+  if (normalized.length >= 3 && password.length >= 6) {
     return {
       id: `usr_${Date.now()}`,
-      email: normalizedEmail,
-      displayName: normalizedEmail.split('@')[0],
+      email: normalized.includes('@') ? normalized : `${normalized}@pawsandco.com`,
+      displayName: normalized.split('@')[0],
       role: 'USER',
       avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80',
       preferredLanguage: 'th',

@@ -1,36 +1,27 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePets } from '@/hooks/use-pets';
-import { useLanguage } from '@/contexts/language-context';
 import { useToast } from '@/contexts/toast-context';
 import { TrackingMap } from '@/components/map/dynamic-tracking-map';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import {
   AlertTriangle,
   ArrowRight,
   Battery,
-  BellRing,
+  Bell,
+  CheckCircle2,
   LocateFixed,
-  MapPinned,
-  PawPrint,
+  MapPin,
   Plus,
-  Radio,
-  ShieldCheck,
   Signal,
-  Wifi,
   Zap,
 } from 'lucide-react';
-import { formatTimeAgo, getSignalInfo } from '@/lib/utils';
-import { DEMO_ALERTS } from '@/data/demo-alerts';
+import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { pets, isLoading, updatePet } = usePets();
-  const { t, locale } = useLanguage();
   const { showToast } = useToast();
   const [selectedPetId, setSelectedPetId] = useState('pet_mochi_01');
   const [sosPetId, setSosPetId] = useState<string | null>(null);
@@ -42,25 +33,52 @@ export default function DashboardPage() {
   }, [pets, selectedPetId]);
 
   const activePet = pets.find((pet) => pet.id === selectedPetId) || pets[0];
-  const summary = useMemo(() => {
-    const online = pets.filter((pet) => pet.device?.isOnline ?? true).length;
-    const safe = pets.filter((pet) => (pet.safeZones?.length || 0) > 0 && !pet.isLost).length;
-    const attention = pets.filter((pet) => {
-      const battery = pet.device?.batteryLevel ?? pet.latestLocation?.batteryLevel ?? 80;
-      return !(pet.device?.isOnline ?? true) || battery <= 30 || pet.isLost;
-    }).length;
-    return { online, safe, attention };
-  }, [pets]);
 
   const handleTogglePowerSave = async () => {
     if (!activePet) return;
-    await updatePet(activePet.id, { batterySaver: !activePet.batterySaver });
+    const nextState = !activePet.batterySaver;
+    await updatePet(activePet.id, { batterySaver: nextState });
     showToast({
       type: 'info',
-      message: activePet.batterySaver
-        ? 'กลับสู่การติดตามทุก 10 วินาทีแล้ว'
-        : 'เปิดโหมดประหยัดพลังงานและปรับรอบส่งพิกัดแล้ว',
+      title: nextState ? 'เปิดโหมดประหยัดพลังงาน' : 'กลับสู่โหมดปกติ',
+      message: nextState
+        ? 'ปรับรอบการส่งพิกัดเพื่อประหยัดแบตเตอรี่'
+        : 'อัปเดตตำแหน่งสดทุก 10 วินาที',
     });
+  };
+
+  const handleRingBuzzer = () => {
+    if (!activePet) return;
+    showToast({
+      type: 'info',
+      title: `ส่งเสียงเรียกปลอกคอ ${activePet.name}`,
+      message: 'ปลอกคอกำลังส่งเสียงบี๊บเพื่อช่วยให้คุณหาน้องเจอได้ง่ายขึ้น',
+    });
+  };
+
+  const handleFocusLocation = () => {
+    if (!activePet) return;
+    showToast({
+      type: 'info',
+      title: 'โฟกัสตำแหน่ง',
+      message: `เลื่อนแผนที่ไปยังตำแหน่งล่าสุดของ ${activePet.name}`,
+    });
+  };
+
+  const handleToggleSos = async () => {
+    if (!activePet) return;
+    if (activePet.isLost) {
+      // Turn off emergency mode
+      await updatePet(activePet.id, { isLost: false });
+      showToast({
+        type: 'success',
+        title: 'ยกเลิกโหมดฉุกเฉินแล้ว',
+        message: `${activePet.name} กลับสู่สถานะปกติเรียบร้อยแล้ว`,
+      });
+    } else {
+      // Open confirm dialog
+      setSosPetId(activePet.id);
+    }
   };
 
   const handleConfirmSos = async () => {
@@ -70,212 +88,296 @@ export default function DashboardPage() {
     setSosPetId(null);
     showToast({
       type: 'error',
-      title: 'ส่งสัญญาณ SOS แล้ว',
-      message: `ระบบเปิดสถานะฉุกเฉินสำหรับ ${targetPet?.name || 'สัตว์เลี้ยง'} และบันทึกพิกัดล่าสุดแล้ว`,
+      title: 'เปิดโหมดสัตว์เลี้ยงหาย (SOS) แล้ว',
+      message: `ระบบเพิ่มความถี่การส่งพิกัดของ ${targetPet?.name || 'สัตว์เลี้ยง'} เป็นแบบความแม่นยำสูงทันที`,
       duration: 6000,
     });
   };
 
-  const activeBattery = activePet?.device?.batteryLevel ?? activePet?.latestLocation?.batteryLevel ?? 0;
-  const activeSignal = getSignalInfo(activePet?.device?.signalStrength ?? 0);
-  const activeOnline = activePet?.device?.isOnline ?? false;
+  const activeBattery = activePet?.device?.batteryLevel ?? activePet?.latestLocation?.batteryLevel ?? 80;
+  const activeOnline = activePet?.device?.isOnline ?? true;
 
   return (
-    <div className="space-y-5">
-      <section className="flex flex-col gap-4 border-b border-surface-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-4 text-neutral-900 selection:bg-neutral-900 selection:text-white">
+      {/* ================= COMPACT HEADER ================= */}
+      <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-neutral-200/80 gap-3">
         <div>
-          <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-secondary-700">
-            <Radio className="h-4 w-4" aria-hidden="true" />
-            ระบบติดตามภาคสนาม · Live
-          </div>
-          <h1 className="page-title">{t('dashboard.title')}</h1>
-          <p className="page-subtitle max-w-2xl">ดูตำแหน่ง ความปลอดภัย และสถานะปลอกคอของน้องทุกตัวจากหน้าจอเดียว</p>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
+            ติดตามสัตว์เลี้ยง
+          </h1>
+          <p className="text-xs text-neutral-500 mt-0.5">
+            ดูตำแหน่งสดและสถานะปลอกคอแบบเรียลไทม์
+          </p>
         </div>
-        <Link href="/pets/new">
-          <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />}>
-            {t('pets.addPet')}
-          </Button>
-        </Link>
+
+        <div>
+          <Link href="/pets/new">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#181a20] hover:bg-neutral-800 text-white font-medium text-xs shadow-xs transition-all active:scale-[0.98]"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>เพิ่มสัตว์เลี้ยง</span>
+            </button>
+          </Link>
+        </div>
       </section>
 
-      <section className="scrollbar-hide -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0" aria-label="Tracking summary">
-        {[
-          { label: 'ออนไลน์', value: summary.online, note: `จาก ${pets.length} ตัว`, icon: Signal, tone: 'success' },
-          { label: 'สัตว์เลี้ยง', value: pets.length, note: 'โปรไฟล์ทั้งหมด', icon: PawPrint, tone: 'primary' },
-          { label: 'ปลอดภัย', value: summary.safe, note: 'อยู่ใน Safe Zone', icon: ShieldCheck, tone: 'success' },
-          { label: 'ต้องตรวจสอบ', value: summary.attention, note: summary.attention ? 'มีสถานะผิดปกติ' : 'ไม่มีการแจ้งเตือน', icon: BellRing, tone: summary.attention ? 'warning' : 'secondary' },
-        ].map((item) => {
-          const Icon = item.icon;
-          const toneClasses =
-            item.tone === 'success'
-              ? 'bg-success-50 text-success-700 border-success-100'
-              : item.tone === 'warning'
-              ? 'bg-warning-50 text-warning-700 border-warning-100'
-              : item.tone === 'secondary'
-              ? 'bg-secondary-50 text-secondary-700 border-secondary-100'
-              : 'bg-primary-50 text-primary-700 border-primary-100';
-          return (
-            <Card key={item.label} className="min-w-[185px] snap-start rounded-xl border-surface-200 p-4 shadow-subtle sm:min-w-0">
-              <div className="flex items-center gap-3">
-                <span className={`rounded-lg border p-3 ${toneClasses}`}>
-                  <Icon className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <div>
-                  <p className="text-xs font-semibold text-surface-500">{item.label}</p>
-                  <p className="text-2xl font-extrabold text-surface-950">{item.value}</p>
-                  <p className="text-xs text-surface-400">{item.note}</p>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </section>
-
-      <section className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <Card className="relative overflow-hidden rounded-2xl border-primary-100 bg-primary-950 p-2 shadow-card">
-          <div className="absolute left-5 top-5 z-20 inline-flex items-center gap-2 rounded-lg border border-white/15 bg-primary-950/95 px-3 py-2 text-xs font-bold text-white shadow-dropdown backdrop-blur-sm">
-            <span className="h-2 w-2 rounded-full bg-success-400 ring-2 ring-success-400/20" />
-            LIVE · อัปเดต 10 วินาที
-          </div>
-          <TrackingMap
-            pets={pets}
-            selectedPetId={selectedPetId}
-            onSelectPet={setSelectedPetId}
-            className="h-[52vh] min-h-[440px] w-full rounded-xl sm:h-[600px]"
-          />
-          <div className="absolute bottom-5 left-5 right-5 z-20 hidden items-center justify-between rounded-lg border border-surface-200 bg-surface-50/95 p-3 shadow-dropdown backdrop-blur-sm sm:flex">
-            <div className="flex items-center gap-4 text-xs font-semibold text-surface-700">
-              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-primary-600" /> ตำแหน่งสัตว์เลี้ยง</span>
-              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full border-2 border-success-500 bg-success-100" /> Safe Zone</span>
+      {/* ================= MAIN 2-COLUMN DISPLAY ================= */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+        {/* ================= LEFT: EXPANSIVE LIVE MAP ================= */}
+        <div className="lg:col-span-7 xl:col-span-8 bg-white rounded-3xl border border-neutral-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden relative flex flex-col min-h-[520px] lg:min-h-[620px]">
+          {/* Top Floating Map Badge */}
+          <div className="absolute top-4 left-4 z-20 pointer-events-none">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-neutral-200/80 shadow-xs text-xs font-semibold text-neutral-800">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>กำลังติดตามสด</span>
             </div>
-            <span className="text-xs text-surface-400">Leaflet · OpenStreetMap</span>
-          </div>
-        </Card>
-
-        <aside className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-extrabold uppercase tracking-wider text-surface-500">Pet control</h2>
-            <Badge variant="surface">{pets.length} pets</Badge>
           </div>
 
-          <div className="scrollbar-hide flex snap-x gap-3 overflow-x-auto pb-2 xl:block xl:space-y-3 xl:overflow-visible">
-            {pets.map((pet) => {
-              const isSelected = pet.id === activePet?.id;
-              const isOnline = pet.device?.isOnline ?? true;
-              const battery = pet.device?.batteryLevel ?? pet.latestLocation?.batteryLevel ?? 0;
-              return (
-                <button
-                  key={pet.id}
-                  type="button"
-                  onClick={() => setSelectedPetId(pet.id)}
-                  className={`min-w-[280px] snap-start rounded-xl border bg-white p-4 text-left shadow-subtle transition-colors xl:w-full ${
-                    isSelected ? 'border-primary-700 bg-primary-50 ring-1 ring-primary-200' : 'border-surface-200 hover:border-primary-300'
-                  }`}
-                  aria-pressed={isSelected}
-                >
-                  <div className="flex items-center gap-3">
-                    <img src={pet.primaryPhotoUrl} alt={pet.name} className="h-14 w-14 rounded-xl object-cover ring-1 ring-surface-200" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate font-extrabold text-surface-950">{pet.name}</p>
-                        <Badge variant={pet.isLost ? 'danger' : isOnline ? 'success' : 'surface'} size="sm" dot>
-                          {pet.isLost ? 'SOS' : isOnline ? 'Online' : 'Offline'}
-                        </Badge>
-                      </div>
-                      <p className="truncate text-xs text-surface-500">{pet.breed}</p>
-                      <div className="mt-2 flex items-center gap-4 text-xs font-semibold text-surface-600">
-                        <span className="inline-flex items-center gap-1"><Battery className="h-3.5 w-3.5" /> {battery}%</span>
-                        <span className="inline-flex items-center gap-1"><Wifi className="h-3.5 w-3.5" /> {isOnline ? pet.device?.networkType : 'No signal'}</span>
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+          {/* Leaflet Live Map */}
+          <div className="w-full h-full flex-1 relative">
+            <TrackingMap
+              pets={pets}
+              selectedPetId={selectedPetId}
+              onSelectPet={setSelectedPetId}
+              className="h-full min-h-[520px] lg:min-h-[620px] w-full"
+            />
           </div>
 
+          {/* Bottom Floating Map Card */}
+          <div className="absolute bottom-4 left-4 right-4 z-20 pointer-events-auto">
+            <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-neutral-200/90 p-3.5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <MapPin className="w-4 h-4 text-neutral-600 flex-shrink-0" />
+                <span className="font-semibold text-neutral-800 truncate">
+                  {activePet?.latestLocation?.address || 'เลขที่ 88/1 ถนนสุขุมวิท 21, วัฒนา กรุงเทพฯ'}
+                </span>
+              </div>
+              <span className="text-[11px] text-neutral-500 flex-shrink-0 font-medium">
+                อัปเดตเมื่อสักครู่
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ================= RIGHT: SINGLE UNIFIED PET CARD ================= */}
+        <aside className="lg:col-span-5 xl:col-span-4 bg-white rounded-3xl border border-neutral-200/80 p-5 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between min-h-[520px] lg:min-h-[620px]">
+          {/* 1. PET SWITCHER TABS */}
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-2">
+              เลือกสัตว์เลี้ยง
+            </p>
+            <div className="grid grid-cols-2 gap-2 p-1 bg-neutral-100/80 rounded-2xl">
+              {pets.map((pet) => {
+                const isSelected = pet.id === activePet?.id;
+                return (
+                  <button
+                    key={pet.id}
+                    type="button"
+                    onClick={() => setSelectedPetId(pet.id)}
+                    className={cn(
+                      'py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all',
+                      isSelected
+                        ? 'bg-white text-neutral-900 shadow-xs'
+                        : 'text-neutral-500 hover:text-neutral-900'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'w-2 h-2 rounded-full flex-shrink-0',
+                        pet.isLost
+                          ? 'bg-red-500'
+                          : pet.device?.isOnline ?? true
+                          ? 'bg-emerald-500'
+                          : 'bg-neutral-300'
+                      )}
+                    />
+                    <span className="truncate">{pet.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. ACTIVE PET HERO & STATUS */}
           {activePet && (
-            <Card className="overflow-hidden rounded-2xl border-primary-100 p-0">
-              <div className="border-b border-primary-800 bg-primary-950 px-5 py-4 text-white">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-primary-200">Selected pet</p>
-                  <h2 className="mt-1 text-xl font-extrabold text-white">{activePet.name}</h2>
-                </div>
-                <Badge variant={activePet.isLost ? 'danger' : activeOnline ? 'success' : 'surface'} dot>
-                  {activePet.isLost ? 'SOS active' : activeOnline ? 'Connected' : 'Offline'}
-                </Badge>
-              </div>
-              </div>
-
-              <div className="p-5">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-xl border border-surface-200 bg-surface-50 p-3">
-                  <p className="text-xs text-surface-500">Battery</p>
-                  <p className="mt-1 flex items-center gap-2 font-extrabold text-surface-900"><Battery className="h-4 w-4 text-success-600" /> {activeBattery}%</p>
-                </div>
-                <div className="rounded-xl border border-surface-200 bg-surface-50 p-3">
-                  <p className="text-xs text-surface-500">Signal</p>
-                  <p className="mt-1 flex items-center gap-2 font-extrabold text-surface-900"><Wifi className="h-4 w-4 text-secondary-600" /> {activeSignal.label.split(' ')[0]}</p>
-                </div>
+            <div className="my-auto py-4 text-center">
+              {/* Pet Photo */}
+              <div className="relative inline-block mx-auto">
+                <img
+                  src={activePet.primaryPhotoUrl}
+                  alt={activePet.name}
+                  className="w-20 h-20 rounded-2xl object-cover border-2 border-neutral-100 shadow-xs mx-auto"
+                />
+                <span
+                  className={cn(
+                    'absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white',
+                    activePet.isLost
+                      ? 'bg-red-500'
+                      : activeOnline
+                      ? 'bg-emerald-500'
+                      : 'bg-neutral-300'
+                  )}
+                />
               </div>
 
+              {/* Name & Breed */}
+              <h2 className="text-2xl font-extrabold text-neutral-900 mt-2.5 tracking-tight">
+                {activePet.name}
+              </h2>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                {activePet.breed}
+              </p>
+
+              {/* Main Status Chip */}
+              <div className="mt-3 flex justify-center">
+                {activePet.isLost ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-200">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    โหมดฉุกเฉิน (SOS)
+                  </span>
+                ) : (activePet.safeZones?.length || 0) > 0 ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    อยู่ในพื้นที่ปลอดภัย (บ้าน)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700 border border-neutral-200">
+                    <span className="w-2 h-2 rounded-full bg-neutral-400" />
+                    สถานะปกติ
+                  </span>
+                )}
+              </div>
+
+              {/* 2 Clean Stat Boxes */}
+              <div className="grid grid-cols-2 gap-3 mt-5 text-left">
+                <div className="p-3.5 rounded-2xl bg-neutral-50/80 border border-neutral-200/70">
+                  <div className="flex items-center justify-between text-xs text-neutral-500">
+                    <span>แบตเตอรี่</span>
+                    <Battery className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <p className="text-lg font-extrabold text-neutral-900 mt-1">
+                    {activeBattery}%
+                  </p>
+                  <p className="text-[10px] text-neutral-500 mt-0.5 font-medium">
+                    {activeBattery > 20 ? 'ใช้งานได้อีก 3 วัน' : 'ควรชาร์จไฟ'}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-neutral-50/80 border border-neutral-200/70">
+                  <div className="flex items-center justify-between text-xs text-neutral-500">
+                    <span>สัญญาณ</span>
+                    <Signal className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <p className="text-lg font-extrabold text-neutral-900 mt-1">
+                    {activeOnline ? 'ปกติ' : 'ออฟไลน์'}
+                  </p>
+                  <p className="text-[10px] text-neutral-500 mt-0.5 font-medium">
+                    {activeOnline ? 'เชื่อมต่อออนไลน์' : 'ไม่มีสัญญาณ'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 3. QUICK ACTION BUTTONS */}
+          <div className="space-y-2 pt-2 border-t border-neutral-100">
+            {/* Call / Ring Collar Button */}
+            <button
+              type="button"
+              onClick={handleRingBuzzer}
+              className="w-full py-3 px-4 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+            >
+              <Bell className="w-4 h-4 text-neutral-700" />
+              <span>ส่งเสียงเรียกปลอกคอ</span>
+            </button>
+
+            {/* Locate Button */}
+            <button
+              type="button"
+              onClick={handleFocusLocation}
+              className="w-full py-3 px-4 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-800 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+            >
+              <LocateFixed className="w-4 h-4 text-neutral-600" />
+              <span>โฟกัสตำแหน่งบนแผนที่</span>
+            </button>
+
+            {/* Power Saver Toggle Row */}
+            <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-neutral-50/60 border border-neutral-200/60">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-neutral-500" />
+                <span className="text-xs font-semibold text-neutral-700">
+                  โหมดประหยัดแบตเตอรี่
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={handleTogglePowerSave}
-                className="mt-3 flex min-h-[48px] w-full items-center justify-between rounded-xl border border-surface-200 px-4 text-sm font-semibold text-surface-700 hover:bg-surface-50"
+                aria-label="Toggle Power Saver"
+                className={cn(
+                  'w-10 h-5 rounded-full p-0.5 transition-colors duration-200 ease-in-out',
+                  activePet?.batterySaver ? 'bg-[#181a20]' : 'bg-neutral-300'
+                )}
               >
-                <span className="inline-flex items-center gap-2"><Zap className="h-4 w-4 text-primary-600" /> Power Saver</span>
-                <span className={`h-6 w-11 rounded-full p-0.5 transition ${activePet.batterySaver ? 'bg-secondary-600' : 'bg-surface-300'}`}>
-                  <span className={`block h-5 w-5 rounded-full bg-white shadow transition ${activePet.batterySaver ? 'translate-x-5' : ''}`} />
-                </span>
+                <div
+                  className={cn(
+                    'w-4 h-4 rounded-full bg-white shadow-xs transition-transform duration-200 ease-in-out',
+                    activePet?.batterySaver ? 'translate-x-5' : 'translate-x-0'
+                  )}
+                />
               </button>
+            </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <Button variant="outline" onClick={() => showToast({ type: 'info', message: `กำลังเลื่อนแผนที่ไปยัง ${activePet.name}` })} leftIcon={<LocateFixed className="h-4 w-4" />}>
-                  Locate
-                </Button>
-                <Link href={`/pet/${activePet.id}`} className="block">
-                  <Button variant="outline" className="w-full" rightIcon={<ArrowRight className="h-4 w-4" />}>
-                    Profile
-                  </Button>
-                </Link>
-              </div>
+            {/* SOS / Lost Pet Button */}
+            <button
+              type="button"
+              onClick={handleToggleSos}
+              className={cn(
+                'w-full py-3 px-4 rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs active:scale-[0.99]',
+                activePet?.isLost
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-red-600 hover:bg-red-700 text-white'
+              )}
+            >
+              {activePet?.isLost ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>ปิดโหมดฉุกเฉิน (พบสัตว์เลี้ยงแล้ว)</span>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>แจ้งสัตว์เลี้ยงหาย (SOS)</span>
+                </>
+              )}
+            </button>
 
-              <Button
-                variant="danger"
-                className="mt-2 w-full"
-                onClick={() => setSosPetId(activePet.id)}
-                leftIcon={<AlertTriangle className="h-4 w-4" />}
+            {/* View History Link */}
+            <div className="pt-2 text-center">
+              <Link
+                href="/history"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-black transition-colors"
               >
-                {t('dashboard.sos')}
-              </Button>
-              </div>
-            </Card>
-          )}
+                <span>ดูประวัติการเดินทางย้อนหลัง</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
         </aside>
       </section>
 
-      <Card className="flex flex-col gap-3 rounded-xl border-danger-200 bg-danger-50 p-4 shadow-subtle sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <span className="rounded-xl bg-white p-2 text-danger-600 shadow-subtle"><BellRing className="h-5 w-5" /></span>
-          <div>
-            <p className="font-bold text-danger-900">{DEMO_ALERTS[1]?.title || 'การแจ้งเตือนล่าสุด'}</p>
-            <p className="text-sm text-danger-700">{DEMO_ALERTS[1]?.message}</p>
-          </div>
-        </div>
-        <Link href="/history" className="inline-flex min-h-[44px] items-center gap-1 rounded-xl px-3 text-sm font-bold text-danger-700 hover:bg-white">
-          ดูเหตุการณ์ <ArrowRight className="h-4 w-4" />
-        </Link>
-      </Card>
-
+      {/* SOS Confirmation Dialog */}
       <ConfirmDialog
         isOpen={!!sosPetId}
         onClose={() => setSosPetId(null)}
         onConfirm={handleConfirmSos}
-        title={t('dashboard.sosConfirmTitle')}
-        description={t('dashboard.sosConfirmDesc')}
-        confirmLabel="ส่งสัญญาณ SOS ทันที"
+        title="ยืนยันการแจ้งสัตว์เลี้ยงหาย (SOS)"
+        description={`คุณต้องการเปิดสถานะฉุกเฉินสำหรับ ${activePet?.name || 'สัตว์เลี้ยง'} หรือไม่? ระบบจะปรับความถี่การส่งสัญญาณ GPS สูงสุดเพื่อช่วยค้นหา`}
+        confirmLabel="เปิดโหมด SOS ทันที"
         cancelLabel="ยกเลิก"
         variant="danger"
       />
