@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { Language } from '@/types';
 import thDict from '../../public/locales/th.json';
 import enDict from '../../public/locales/en.json';
@@ -22,23 +22,31 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Language>('th');
 
   useEffect(() => {
-    const saved = localStorage.getItem('paws_lang') as Language;
-    if (saved && (saved === 'th' || saved === 'en')) {
-      setLocaleState(saved);
-      document.documentElement.lang = saved;
+    try {
+      const saved = localStorage.getItem('paws_lang') as Language;
+      if (saved && (saved === 'th' || saved === 'en')) {
+        setLocaleState(saved);
+        document.documentElement.lang = saved;
+      }
+    } catch {
+      // Ignore private browsing storage errors
     }
   }, []);
 
-  const setLocale = (lang: Language) => {
+  const setLocale = useCallback((lang: Language) => {
     setLocaleState(lang);
-    localStorage.setItem('paws_lang', lang);
+    try {
+      localStorage.setItem('paws_lang', lang);
+    } catch {
+      // Ignore storage errors
+    }
     document.documentElement.lang = lang;
-  };
+  }, []);
 
   /**
    * Helper to get deeply nested translation strings: e.g. t('landing.heroTitle')
    */
-  const t = (keyPath: string, fallback?: string): string => {
+  const t = useCallback((keyPath: string, fallback?: string): string => {
     const keys = keyPath.split('.');
     let current = dictionaries[locale] || dictionaries.th;
 
@@ -60,10 +68,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     }
 
     return typeof current === 'string' ? current : fallback || keyPath;
-  };
+  }, [locale]);
+
+  const contextValue = useMemo(
+    () => ({ locale, setLocale, t }),
+    [locale, setLocale, t]
+  );
 
   return (
-    <LanguageContext.Provider value={{ locale, setLocale, t }}>
+    <LanguageContext.Provider value={contextValue}>
       {children}
     </LanguageContext.Provider>
   );

@@ -245,16 +245,315 @@ docker compose up -d
 
 ---
 
-## 🔮 แผนการดำเนินงานระยะถัดไป (Phase 2 Roadmap)
+## 🔮 แผนการดำเนินงาน Phase 2 อย่างละเอียด: การพัฒนา Firmware และเชื่อมต่อฮาร์ดแวร์ (Detailed Hardware & Firmware Implementation Plan)
 
-- [ ] พัฒนาเฟิร์มแวร์ ESP32-S3 ผ่าน **PlatformIO** (C/C++)
-- [x] เตรียม REST/JSON API v1 สำหรับรับ Telemetry จาก ESP32-S3 อย่างปลอดภัย
-- [ ] นำ firmware เชื่อมต่อบอร์ด **LILYGO T-SIM7080G-S3** และทดสอบ APN ของซิมจริง
-- [ ] เปิด HTTPS endpoint ที่บอร์ดเข้าถึงได้จาก Cat-M/NB-IoT
-- [ ] เชื่อม PostgreSQL/Prisma สำหรับเก็บ Telemetry แบบถาวร
-- [ ] ติดตั้ง **MQTT Broker** เมื่อจำเป็นต้องรองรับอุปกรณ์จำนวนมาก
-- [ ] ติดตั้งระบบ **WebSockets** สำหรับการอัปเดตพิกัดบนแผนที่แบบ Real-time Push
-- [ ] ทดสอบภาคสนาม (Field Testing) ทดสอบสัญญาณและการประหยัดพลังงานในพื้นที่จริง
+ส่วนนี้เป็นแผนแม่บทเชิงวิศวกรรมสำหรับการเชื่อมต่อบอร์ด **LILYGO T-SIM7080G-S3 (ESP32-S3)** เข้ากับระบบ Web Application ครบวงจร (End-to-End) ออกแบบให้แบ่งทำเป็น **7 Sprint (รวม 8 วัน)** พร้อมจุดตรวจสอบ (Checkpoint), ข้อมูลขาพินจริง, ตารางเครือข่าย, โค้ดต้นแบบ, กรณีทดสอบ (Test Matrix), และแผนรับมือความเสี่ยงหน้างาน
+
+---
+
+### 1. สถานะความพร้อมก่อนเริ่ม Phase 2 (Baseline Status)
+
+| องค์ประกอบ | สถานะ | ไฟล์อ้างอิง / หมายเหตุ |
+|---|---|---|
+| Web Application (Next.js 14) | ✅ พร้อมใช้งาน | 11 หน้าเว็บ, Dashboard polling 10s, History polling 15s |
+| IoT REST API v1.0 | ✅ ผ่าน Smoke Test 100% | [`docs/IOT_API.md`](docs/IOT_API.md) (`/location`, `/heartbeat`, `/config`) |
+| Docker Production Image | ✅ พร้อม Deploy | Image `pawsandco:latest` (54.9 MB) + `docker-compose.yml` |
+| Firmware ต้นแบบปัจจุบัน | ⚠️ อ่าน GPS อย่างเดียว | [`firmware/PetguguGPS/PetguguGPS.ino`](firmware/PetguguGPS/PetguguGPS.ino) ยังไม่ส่ง HTTP |
+| Official SDK & Reference | ✅ พร้อมอ้างอิง | `MinimalModemAndEspSleep`, `SIM7080G-ATT-NB-IOT-HTTP-HTTPS`, `MinimalModemPowerSaveMode` |
+
+---
+
+### 2. ข้อมูลอ้างอิงฮาร์ดแวร์และขาพินจริง (Hardware Pinout & Power Rails — LILYGO T-SIM7080G-S3)
+
+อ้างอิงจากวงจรบอร์ด (`LILYGO_ESP32S3_CAM_SIM7080G`) และไฟล์ [`PetguguGPS.ino`](firmware/PetguguGPS/PetguguGPS.ino):
+
+| สัญญาณ / หน้าที่ | GPIO Pin | รายละเอียดการใช้งาน |
+|---|---|---|
+| `I2C_SDA` / `I2C_SCL` | `15` / `7` | สื่อสารกับชิปจัดการพลังงาน **AXP2101 PMU** (I2C Address `0x34`, Chip ID `0x4A`) |
+| `PMU_INPUT_PIN` | `6` | ขา Interrupt จาก AXP2101 PMU |
+| `BOARD_MODEM_PWR_PIN` | `41` | ขา `PWRKEY` เปิด/ปิดโมเด็ม SIM7080G (Pulse HIGH ≥ 1 วินาที) |
+| `BOARD_MODEM_DTR_PIN` | `42` | ควบคุม Sleep/Wake ของโมเด็ม (`HIGH` = หลับเมื่อตั้ง `AT+CSCLK=1`, `LOW` = ตื่น) |
+| `BOARD_MODEM_RI_PIN` | `3` | Ring Indicator จากโมเด็ม |
+| `BOARD_MODEM_RXD` / `TXD` | `4` / `5` | UART (`Serial1`, `115200 bps`) สื่อสาร AT Command กับ SIM7080G |
+| `SDMMC_CMD` / `CLK` / `DATA` | `39` / `38` / `40` | ช่อง MicroSD Card (ทางเลือกเสริมสำหรับเก็บ Log ขนาดใหญ่) |
+| `USER_BUTTON_PIN` | `0` | ปุ่ม Boot / User Button สำหรับทริกเกอร์ทดสอบหรือส่ง SOS จากตัวบอร์ด |
+
+#### การตั้งค่าแหล่งจ่ายไฟ AXP2101 PMU (ข้อควรระวังระดับฮาร์ดแวร์)
+- **`DC3 = 3000 mV`**: ไฟเลี้ยงหลักโมเด็ม SIM7080G (ช่วงปลอดภัย 2700–3400 mV — **ห้ามปรับเกินเด็ดขาด** และต้องปิด DC3 ก่อนปรับแรงดัน)
+- **`BLDO1 = 3300 mV`**: ไฟเลี้ยงวงจร Level Converter ระหว่าง ESP32-S3 กับ SIM7080G (**ห้ามปิดขณะคุยกับโมเด็ม** ปิดได้เฉพาะตอนเข้า ESP32 Deep Sleep)
+- **`BLDO2 = 3300 mV`**: ไฟเลี้ยงเสาอากาศ Active GNSS Antenna (**ต้องเปิดก่อนอ่าน GPS** และปิดก่อนเข้า Deep Sleep เพื่อลดกระแส)
+- **ปิด `TS Pin` Measurement**: ต้องเรียก `PMU.disableTSPinMeasure()` (หรือเคลียร์ bit 1 ของ register `0x30`) เสมอ เนื่องจากบอร์ดไม่มีเซ็นเซอร์ NTC หากไม่ปิดจะทำให้ชาร์จแบตเตอรี่ Li-Po ไม่เข้า
+
+---
+
+### 3. แผนภาพสถานะการทำงาน (Time-Sharing State Machine Architecture)
+
+> **ข้อจำกัดสำคัญของฮาร์ดแวร์ SIM7080G**: ชิปโมเด็มไม่สามารถรับสัญญาณดาวเทียม GNSS และเชื่อมต่อโครงข่ายเซลลูลาร์ (Cat-M1/NB-IoT) พร้อมกันได้ จึงต้องออกแบบเฟิร์มแวร์เป็นวงรอบสลับเวลา (Time-Sharing) ควบคู่กับ `RTC_DATA_ATTR` เพื่อจำสถานะข้ามช่วง Deep Sleep
+
+```mermaid
+stateDiagram-v2
+    [*] --> BOOT
+    BOOT --> INIT_HW: เปิด AXP2101 PMU + ปลุก SIM7080G (DTR LOW)
+    INIT_HW --> GPS_FIX: ปิด Radio (AT+CFUN=0) + เปิด BLDO2 & GNSS
+    GPS_FIX --> CELLULAR_CONNECT: ได้พิกัดแล้ว → ปิด GNSS & BLDO2
+    GPS_FIX --> HEARTBEAT_PREP: Timeout (90s) ยังไม่ได้ Fix → ปิด GNSS
+    CELLULAR_CONNECT --> REPLAY_QUEUE: เปิด Radio (AT+CFUN=1) + ต่อเครือข่ายสำเร็จ
+    CELLULAR_CONNECT --> STORE_OFFLINE: เชื่อมเครือข่ายไม่ได้ → เก็บลง Flash (LittleFS)
+    HEARTBEAT_PREP --> SEND_HEARTBEAT: ต่อเครือข่ายสำเร็จ → POST /api/iot/heartbeat
+    HEARTBEAT_PREP --> SLEEP: ต่อเครือข่ายไม่ได้
+    REPLAY_QUEUE --> SEND_LOCATION: ส่งคิวค้างใน Flash ก่อน → POST /api/iot/location
+    SEND_LOCATION --> APPLY_CONFIG: HTTP 200 (accepted/duplicate)
+    SEND_LOCATION --> STORE_OFFLINE: HTTP 5xx / Timeout → เก็บลง Flash
+    SEND_HEARTBEAT --> APPLY_CONFIG: อ่าน config จาก JSON response
+    APPLY_CONFIG --> SLEEP: ปรับรอบเวลาตาม Normal / SOS / PowerSave
+    STORE_OFFLINE --> SLEEP: บันทึก /queue.jsonl สำเร็จ
+    SLEEP --> [*]: AT+CSCLK=1 + DTR HIGH + ESP32 Deep Sleep (~1.7-2 mA)
+```
+
+---
+
+### 4. แผนการดำเนินงาน 7 Sprint (8-Day Execution Roadmap)
+
+```mermaid
+flowchart LR
+    S1["Sprint 1\nDev Environment\nวันที่ 1"] --> S2["Sprint 2\nCellular & Wi-Fi\nวันที่ 2-3"]
+    S2 --> S3["Sprint 3\nHTTP POST & API\nวันที่ 3-4"]
+    S3 --> S4["Sprint 4\nState Machine\nวันที่ 4-5"]
+    S4 --> S5["Sprint 5\nPower & SOS\nวันที่ 5-6"]
+    S5 --> S6["Sprint 6\nOffline Queue\nวันที่ 6-7"]
+    S6 --> S7["Sprint 7\nTesting & Docs\nวันที่ 7-8"]
+```
+
+---
+
+#### ⚙️ Sprint 1: เตรียม Development Environment และทดสอบบอร์ดพื้นฐาน (วันที่ 1)
+**เป้าหมาย**: ยืนยันว่า Toolchain, ไดรเวอร์ USB, ชิป PMU และเสาอากาศ GNSS ของบอร์ดทำงานปกติ
+
+| ลำดับ | งานที่ต้องทำ | รายละเอียดการตั้งค่า |
+|---|---|---|
+| 1.1 | ติดตั้ง IDE | **Arduino IDE 2.x** (แนะนำสำหรับทดสอบไว) หรือ **PlatformIO** (VS Code) |
+| 1.2 | ติดตั้ง ESP32 Core | Board Manager → `esp32` by Espressif v3.x เลือกบอร์ด **`ESP32S3 Dev Module`** |
+| 1.3 | ติดตั้ง Libraries | `TinyGSM` (v0.12+), `ArduinoJson` (v7.x), `XPowersLib` (สำหรับอ่านแรงดันแบตเตอรี่ AXP2101) |
+| 1.4 | ตั้งค่า Board Menu | **PSRAM**: `OPI PSRAM` · **Flash Size**: `16MB (128Mb)` · **Partition Scheme**: `Huge APP (3MB No OTA/1MB SPIFFS)` หรือ `16M Flash (3MB APP/9.9MB FATFS)` · **USB CDC On Boot**: `Enabled` · **Upload Speed**: `921600` |
+| 1.5 | Flash เฟิร์มแวร์เดิม | Flash [`firmware/PetguguGPS/PetguguGPS.ino`](firmware/PetguguGPS/PetguguGPS.ino) → เปิด Serial Monitor ที่ `115200 baud` |
+| 1.6 | ✅ **Checkpoint 1** | เห็นข้อความ `PMU connected` → `SIM7080G ready` → `GNSS enabled` และเมื่อนำเสา GPS วางกลางแจ้งต้องได้รับค่า `Latitude / Longitude` จริง |
+
+---
+
+#### 📡 Sprint 2: เชื่อมต่อเครือข่าย Cellular (Cat-M1 / NB-IoT) และ Wi-Fi Dev Mode (วันที่ 2–3)
+**เป้าหมาย**: บอร์ดเชื่อมต่ออินเทอร์เน็ตได้จริงและ Ping ภายนอกสำเร็จ
+
+> **ข้อควรระวังสำคัญเรื่อง SIM Card (รอบคอบก่อนซื้อซิม!)**:
+> โมเด็ม **SIM7080G** รองรับเฉพาะเครือข่าย **LTE Cat-M1 (eMTC)** และ **NB-IoT** เท่านั้น (**ไม่รองรับ 2G/GPRS และไม่รองรับซิม 4G มือถือทั่วไปที่เป็น Cat-1/Cat-4**)
+> - **สำหรับทดสอบภาคสนามในไทย**: ต้องใช้ซิม **NB-IoT / Cat-M1** เช่น AIS NB-IoT, True NB-IoT หรือ IoT Global SIM ที่โรมมิ่ง Cat-M1/NB-IoT ในไทย (เช่น 1NCE, ThingsMobile, Soracom)
+> - **สำหรับทดสอบทันทีระหว่างรอซิม IoT (Wi-Fi Fallback Mode)**: ESP32-S3 มี Wi-Fi ในตัว สามารถตั้ง Compile Flag `#define USE_WIFI_TRANSPORT 1` เพื่ออ่าน GPS จาก SIM7080G แล้วส่ง HTTP ผ่าน Wi-Fi/Hotspot มือถือเข้าหา Server ได้ทันที และใช้เป็นแผนสำรองในห้องสอบป้องกันโครงงานกรณีอับสัญญาณมือถือได้ด้วย
+
+##### ตารางค่า APN อ้างอิงสำหรับประเทศไทย
+| ผู้ให้บริการ / ประเภทซิม | โหมดที่รองรับ | ค่า APN (`AT+CGDCONT`) | หมายเหตุ |
+|---|---|---|---|
+| **AIS NB-IoT** | NB-IoT (Band 8 / 900MHz) | `devkit.nb` หรือ `nbiot.ais` | ตรวจสอบแพ็กเกจว่าเปิดพอร์ต HTTP/HTTPS ออกอินเทอร์เน็ตได้ |
+| **True NB-IoT** | NB-IoT (Band 8 / 900MHz) | `device.iot` หรือ `internet` | บางแพ็กเกจต้องลงทะเบียน IMEI กับแพลตฟอร์มผู้ให้บริการ |
+| **DTAC NB-IoT** | NB-IoT | `dtac.nb1` | ตรวจสอบพื้นที่ให้บริการร่วมกับ True |
+| **IoT Global SIM (Cat-M1/NB-IoT)** | Cat-M1 + NB-IoT | ตามผู้ให้บริการ (เช่น `iot.1nce.net`) | Cat-M1 ให้ Latency ต่ำกว่าและรองรับ TLS/HTTPS เสถียรกว่า NB-IoT |
+
+##### รายการงาน Sprint 2
+| ลำดับ | งานที่ต้องทำ | รายละเอียด |
+|---|---|---|
+| 2.1 | ตรวจสอบสถานะซิม | ปิดไฟบอร์ด → ใส่ Nano SIM → ตรวจ `modem.getSimStatus() == SIM_READY` |
+| 2.2 | ตั้งค่าโหมดและ APN | `modem.setNetworkMode(38)` (LTE only) และ `modem.setPreferredMode(3)` (Cat-M + NB-IoT) พร้อม `AT+CGDCONT=1,"IP","<APN>"` |
+| 2.3 | ลงทะเบียนเครือข่าย | วนตรวจ `modem.getRegistrationStatus()` (Timeout 60 วินาที) จนได้ `REG_OK_HOME` หรือ `REG_OK_ROAMING` |
+| 2.4 | เปิด Network Bearer | ส่ง `AT+CNACT=0,1` และรอผลตอบกลับ `+APP PDP: 0,ACTIVE` พร้อมเช็ค `modem.localIP()` |
+| 2.5 | ทดสอบ Ping | ส่ง `AT+SNPING4="8.8.8.8",1,16,5000` เพื่อยืนยันการออกอินเทอร์เน็ต |
+| 2.6 | เพิ่ม Wi-Fi Transport Flag | สร้าง Abstraction Layer สลับระหว่าง `TinyGsmClientSecure` (Cellular) กับ `WiFiClientSecure` / `WiFiClient` (Wi-Fi) |
+| 2.7 | ✅ **Checkpoint 2** | Serial Monitor แสดง `Local IP`, ค่า `CSQ` (Signal Quality), และ Ping `8.8.8.8` ผ่าน |
+
+---
+
+#### 🌐 Sprint 3: ส่งพิกัดจริงผ่าน HTTP POST เข้า Web API (วันที่ 3–4)
+**เป้าหมาย**: บอร์ดอ่านพิกัด GPS → ยิง `POST /api/iot/location` → หมุดน้องหมาขยับบน Dashboard จริง
+
+##### สถาปัตยกรรมการเชื่อมต่อช่วงพัฒนา (Dev Tunnel vs LAN)
+```mermaid
+flowchart LR
+    Board["LILYGO T-SIM7080G-S3\n(SIM Cat-M1/NB-IoT)"] -->|"HTTPS POST + X-Device-Key\nJSON Payload"| Tunnel["Cloudflare Tunnel / ngrok\nhttps://xxxx.trycloudflare.com"]
+    BoardWifi["LILYGO T-SIM7080G-S3\n(Wi-Fi Dev Mode)"] -->|"HTTP POST (วง LAN เดียวกัน)"| Server
+    Tunnel -->|"Forward → localhost:3000"| Server["Next.js Web Server\n(PC / Docker / VPS)"]
+    Server -->|"JSON Response + Config\n(interval, sosActive, safeZones)"| Board
+    Browser["เบราว์เซอร์เจ้าของสัตว์เลี้ยง\n/dashboard & /history"] --> Server
+```
+
+| ลำดับ | งานที่ต้องทำ | รายละเอียด |
+|---|---|---|
+| 3.1 | เปิด Public HTTPS Tunnel | ใช้ `cloudflared tunnel --url http://localhost:3000` (แนะนำ: ไม่มีหน้า Interstitial เตือน) หรือ `ngrok http 3000` (ให้แนบ Header `ngrok-skip-browser-warning: 1`) |
+| 3.2 | ตรวจสอบ Environment Server | ยืนยันค่า `IOT_DEVICE_KEYS="dev_lilygo_01:paws-demo-device-key-change-me"` ใน `.env.local` |
+| 3.3 | สร้าง JSON Payload | ใช้ `ArduinoJson` ประกอบฟิลด์ตาม [`docs/IOT_API.md`](docs/IOT_API.md) แปลงความเร็ว `knots × 1.852 = km/h` และส่ง `messageId` รูปแบบ `{deviceId}-boot{bootCount}-{sequence}` |
+| 3.4 | ส่งคำขอ HTTP POST | แนบ Header `Content-Type: application/json` และ `X-Device-Key: <DEVICE_KEY>` ไปยัง `/api/iot/location` |
+| 3.5 | จัดการ HTTP Status ครบทุกกรณี | `200` (accepted / duplicate → ผ่าน), `400/422` (payload ผิด → ทิ้งและ log), `401/403/404/409` (สิทธิ์/การจับคู่ผิด → หยุด retry ถี่และแจ้งเตือน), `500`/Timeout (เก็บลงคิวและ retry แบบ Backoff) |
+| 3.6 | ✅ **Checkpoint 3** | เปิดหน้า `/dashboard` และ `/history` เห็นพิกัดจริงจากบอร์ดพร้อมเวลาอัปเดตล่าสุดและผลคำนวณ Safe Zone |
+
+##### ตัวอย่างโค้ดมาตรฐาน: ฟังก์ชัน `sendLocation()` (รองรับ Idempotency & Config Sync)
+```cpp
+#include <ArduinoJson.h>
+
+int sendLocationPayload(const String& jsonBody, String& responseBody) {
+  TinyGsmClientSecure client(modem, 0);
+  if (!client.connect(API_HOST, API_PORT)) {
+    Serial.println("[HTTP] Connect failed");
+    return -1;
+  }
+
+  client.print("POST /api/iot/location HTTP/1.1\r\n");
+  client.print(String("Host: ") + API_HOST + "\r\n");
+  client.print(String("X-Device-Key: ") + DEVICE_KEY + "\r\n");
+  client.print("ngrok-skip-browser-warning: 1\r\n");
+  client.print("Content-Type: application/json\r\n");
+  client.print("Connection: close\r\n");
+  client.print("Content-Length: " + String(jsonBody.length()) + "\r\n\r\n");
+  client.print(jsonBody);
+
+  unsigned long start = millis();
+  while (client.connected() && !client.available()) {
+    if (millis() - start > 15000UL) {
+      client.stop();
+      return -2; // Response timeout
+    }
+    delay(50);
+  }
+
+  String statusLine = client.readStringUntil('\n');
+  int httpStatus = 0;
+  sscanf(statusLine.c_str(), "HTTP/%*s %d", &httpStatus);
+
+  // ข้าม Header แล้วอ่าน JSON Body เพื่อนำไปอัปเดต Config (updateIntervalSeconds / sosActive)
+  while (client.available()) {
+    String line = client.readStringUntil('\n');
+    if (line == "\r") break;
+  }
+  responseBody = client.readString();
+  client.stop();
+  return httpStatus;
+}
+```
+
+---
+
+#### 🔄 Sprint 4: Time-Sharing State Machine และ Deep Sleep (วันที่ 4–5)
+**เป้าหมาย**: บอร์ดทำงานสลับ GPS ↔ Cellular ↔ Deep Sleep อัตโนมัติเป็นวงรอบ และส่ง Heartbeat เมื่ออยู่ในอาคาร
+
+| ลำดับ | งานที่ต้องทำ | รายละเอียด |
+|---|---|---|
+| 4.1 | เก็บสถานะข้าม Deep Sleep | ใช้ `RTC_DATA_ATTR` เก็บ `bootCount`, `sequence`, `sleepSeconds`, `sosActive`, `powerSaveMode`, `consecutiveFailures` |
+| 4.2 | Phase 1 — GNSS Fix | ส่ง `AT+CFUN=0` ปิด Radio → เปิด `BLDO2` (3.3V) → เปิด GNSS → รอ Fix สูงสุด 90 วินาที (หรือ 30 วินาทีในโหมด SOS) → ปิด GNSS และ `BLDO2` |
+| 4.3 | Phase 2 — Cellular Upload | ส่ง `AT+CFUN=1` เปิด Radio → ลงทะเบียนเครือข่าย → หากได้พิกัดส่ง `/api/iot/location` หากไม่ได้พิกัดส่ง `/api/iot/heartbeat` (แนบ `uptimeSeconds`, `freeHeapBytes`, `gpsStatus: "SEARCHING"`) |
+| 4.4 | Phase 3 — Parse Config | อ่าน `data.config` ที่แนบกลับมากับทุก Response (`updateIntervalSeconds`, `heartbeatIntervalSeconds`, `powerSaveMode`, `sosActive`) เพื่อตั้งเวลานอนรอบถัดไปโดยไม่ต้องยิง GET ซ้ำ |
+| 4.5 | Phase 4 — Deep Sleep | ปิดไฟ `AT+CNETLIGHT=0` → สั่งโมเด็มหลับ `AT+CSCLK=1` + ดึง `DTR HIGH` + `gpio_hold_en()` → ปิด `BLDO1`/`BLDO2` และ ADC บน AXP2101 → เข้า `esp_deep_sleep_start()` |
+| 4.6 | จัดการ Wakeup | เมื่อตื่น (`esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_UNDEFINED`) ให้เรียก `gpio_hold_dis()` และดึง `DTR LOW` + ส่ง `AT+CSCLK=0` แทนการกด `PWRKEY` ซ้ำ |
+| 4.7 | ✅ **Checkpoint 4** | บอร์ดตื่น → จับ GPS → ส่งข้อมูล → หลับ (~1.7–2 mA) → ตื่นตามรอบเวลาที่ตั้งไว้ได้ต่อเนื่องเกิน 10 รอบโดยไม่ค้าง |
+
+---
+
+#### 🔋 Sprint 5: Power Management, Battery Telemetry และ SOS Mode (วันที่ 5–6)
+**เป้าหมาย**: วัดค่าแบตเตอรี่และสัญญาณจริงจากฮาร์ดแวร์ พร้อมปรับพฤติกรรมตามโหมดที่สั่งจากหน้าเว็บ
+
+| ลำดับ | งานที่ต้องทำ | รายละเอียด |
+|---|---|---|
+| 5.1 | อ่านแรงดันแบตเตอรี่จริง | เปิด Battery ADC บน AXP2101 → อ่าน `PMU.getBattVoltage()` (mV) แปลงเป็น `batteryVoltage` (V) และ `batteryLevel` (`0..100%` ตาม Li-Po Discharge Curve `3.30V–4.20V`) |
+| 5.2 | อ่านคุณภาพสัญญาณ | อ่าน `modem.getSignalQuality()` (`0..31`, `99 = unknown`) แปลงเป็น `signalStrength` (`0..100%`) |
+| 5.3 | รองรับ Dual/Quad Modes | ปรับ `sleepSeconds` และ `gpsTimeoutSeconds` อัตโนมัติตามค่า Config จาก Server และระดับแบตเตอรี่ |
+| 5.4 | Low Battery Failsafe | หากแบตเตอรี่ต่ำกว่า `15%` (`< 3.50V`) ให้บังคับเข้าโหมดประหยัดพลังงาน (เว้นแต่เจ้าของเปิด `sosActive`) เพื่อยืดเวลาให้พอส่งตำแหน่งสุดท้าย |
+| 5.5 | ป้องกันโมเด็มค้าง (Watchdog) | เปิด ESP32 Task Watchdog (`esp_task_wdt_init`) 180 วินาที ป้องกันบอร์ดค้างกลางแจ้งแล้วสูบแบตหมด |
+| 5.6 | ✅ **Checkpoint 5** | หน้า Dashboard แสดง `% แบตเตอรี่` และ `ระดับสัญญาณ` จริง และเมื่อกดปุ่ม **SOS** บนเว็บ บอร์ดจะเปลี่ยนรอบส่งเร็วขึ้นในรอบถัดไป |
+
+##### ตารางนโยบายโหมดการทำงานและงบพลังงาน (Operating Modes & Power Policy)
+| โหมดการทำงาน | เงื่อนไข | รอบส่งพิกัด (Sleep Interval) | GNSS Timeout | คาดการณ์อายุแบต (1,000 mAh) |
+|---|---|---|---|---|
+| **Normal Mode** | ปกติ (`sosActive = false`) | 60–300 วินาที (ตาม Config) | 90 วินาที | ~2–4 วัน |
+| **SOS / Emergency** | เจ้าของกด SOS (`sosActive = true`) | **5–10 วินาที** (ไม่ตัดโมเด็มหลับลึก) | 30 วินาที | ~6–10 ชั่วโมง |
+| **Power Save Mode** | เปิดประหยัดพลังงาน (`powerSaveMode = true`) | 300 วินาที (5 นาที) | 60 วินาที | ~4–6 วัน |
+| **Low Battery Failsafe** | แบตเตอรี่ `< 15%` และไม่ได้เปิด SOS | 600 วินาที (10 นาที) | 45 วินาที | ยืดเวลาฉุกเฉินอีก 12+ ชั่วโมง |
+
+---
+
+#### 💾 Sprint 6: Offline Store-and-Forward และ Retry Policy (วันที่ 6–7)
+**เป้าหมาย**: เมื่อสุนัขเดินเข้าจุดอับสัญญาณ บอร์ดเก็บพิกัดลง Flash Memory และทยอยส่งย้อนหลังครบทุกจุดเมื่อสัญญาณกลับมา
+
+| ลำดับ | งานที่ต้องทำ | รายละเอียด |
+|---|---|---|
+| 6.1 | เปิดระบบไฟล์ LittleFS | เรียก `LittleFS.begin(true)` สร้างไฟล์คิว `/queue.jsonl` (1 บรรทัด = 1 JSON Payload) |
+| 6.2 | Enqueue เมื่อส่งล้มเหลว | หากเชื่อมต่อเครือข่ายไม่ได้ หรือได้ HTTP `5xx`/Timeout → บันทึก Payload พร้อม `messageId` และ `sentAt` (เวลา UTC จากดาวเทียม GPS!) ลง `/queue.jsonl` |
+| 6.3 | Ring Buffer / Limit Guard | จำกัดคิวสูงสุด **100 รายการ** (~50 KB) หากเต็มให้ตัดรายการเก่าสุดออก เพื่อป้องกัน Flash เต็มหรือไฟล์เสียหาย |
+| 6.4 | Replay FIFO + Idempotency | เมื่อต่อเน็ตสำเร็จ ให้ส่งข้อมูลใน `/queue.jsonl` เรียงจากเก่าไปใหม่ทีละรายการ (เว้นช่วง 500 ms) — หากได้ HTTP `200` (`accepted: true` หรือ `duplicate: true`) ให้ลบออกจากคิว |
+| 6.5 | Exponential Backoff | หากเครือข่ายล่มต่อเนื่อง ปรับเวลารอ Retry ตามลำดับ **`5s → 15s → 30s → 60s → 300s`** (สอดคล้องกับ `docs/IOT_API.md`) |
+| 6.6 | ✅ **Checkpoint 6** | จำลองสัญญาณขาด 5 รอบ → ต่อสัญญาณกลับ → พิกัดย้อนหลังทั้ง 5 จุดปรากฏครบเรียงตามเวลาในหน้า `/history` โดยไม่ซ้ำกัน |
+
+---
+
+#### 🧪 Sprint 7: Integration Testing, Field Test และเอกสารนำเสนอ (วันที่ 7–8)
+**เป้าหมาย**: ทดสอบ End-to-End ครบทุกสถานการณ์ เก็บหลักฐานตัวเลขจริงสำหรับเล่มโครงงานและวันสอบป้องกัน
+
+##### ตารางกรณีทดสอบระบบครบวงจร (End-to-End Test Matrix)
+| รหัส | กรณีทดสอบ (Scenario) | ขั้นตอนการทดสอบ | ผลลัพธ์ที่คาดหวัง (Pass Criteria) |
+|---|---|---|---|
+| **T1** | Outdoor GPS → Dashboard | นำบอร์ดออกกลางแจ้ง รอ GPS Fix และส่งขึ้น Server | หมุดบน `/dashboard` ย้ายไปพิกัดจริง แสดงจำนวนดาวเทียมและ `accuracy` ถูกต้อง |
+| **T2** | Indoor No-Fix Heartbeat | วางบอร์ดในอาคารที่รับดาวเทียมไม่ได้ | หลัง GPS Timeout บอร์ดส่ง `/api/iot/heartbeat` หน้าเว็บแสดงสถานะออนไลน์ + "กำลังค้นหาสัญญาณ" |
+| **T3** | Remote SOS Activation | กดเปิดโหมด SOS บนหน้าเว็บ แล้วรอบอร์ดซิงก์ Config | รอบถัดไปบอร์ดปรับความถี่ส่งเป็น 5–10 วินาที และเส้นทาง `/history` ถี่ขึ้นอย่างชัดเจน |
+| **T4** | Offline Store-and-Forward | ถอดซิม/ปิด Tunnel ให้บอร์ดเก็บพิกัด 5 รอบ แล้วเปิดกลับ | บอร์ดส่งคิวค้างครบทั้ง 5 จุด ปรากฏเป็นเส้นทางต่อเนื่องบน `/history` ไม่มีจุดซ้ำ |
+| **T5** | Idempotency / Duplicate Guard | ส่ง Payload ที่มี `messageId` เดิมซ้ำ 2 ครั้ง | Server ตอบ `HTTP 200` + `duplicate: true` และไม่บันทึกแถวซ้ำในประวัติ |
+| **T6** | Geofence Safe Zone Alert | เคลื่อนย้ายบอร์ดออกนอกรัศมี Safe Zone ที่ตั้งไว้ | Response คืน `transition: "LEFT_ZONE"` และหน้าเว็บแจ้งเตือนออกนอกพื้นที่ปลอดภัย |
+| **T7** | Battery & Signal Telemetry | ทดสอบต่อแบต Li-Po แรงดันต่างกัน (เต็ม vs ใกล้หมด) | ค่า `batteryLevel`, `batteryVoltage`, `signalStrength` อัปเดตตรงกับค่าที่วัดได้จริง |
+| **T8** | Power Cycle & Recovery | ถอดสาย USB / แบตออกระหว่างทำงานแล้วเสียบใหม่ | `bootCount` เพิ่มขึ้น บอร์ดเริ่มวงรอบใหม่ได้เองโดยไม่ต้องกด Reset |
+
+---
+
+### 5. แผนรับมือความเสี่ยงและปัญหาหน้างาน (Risk Mitigation & Contingency Plan)
+
+เพื่อความรอบคอบทั้งในช่วงพัฒนาและวันนำเสนอโครงงาน (Capstone Defense):
+
+| ความเสี่ยงที่อาจพบ | สาเหตุ | แผนรับมือ / วิธีแก้ไข |
+|---|---|---|
+| **ซิม 4G ปกติใช้งานกับ SIM7080G ไม่ได้** | SIM7080G รองรับเฉพาะ Cat-M1 / NB-IoT | เตรียมซิม **AIS/True NB-IoT** หรือ **IoT Global SIM** และใส่โหมด **Wi-Fi Dev/Fallback** บน ESP32-S3 เป็นตัวสำรอง |
+| **GPS Cold Start ช้า (1–3 นาที) หรือในห้องสอบจับดาวเทียมไม่ได้** | สัญญาณดาวเทียมทะลุหลังคาอาคารไม่ได้ | ใช้ **A-GPS** ลดเวลาลงเหลือ 2–5 วินาทีกลางแจ้ง และเตรียม **Heartbeat Mode** + **Indoor Demo Mode** (บันทึกเส้นทางภาคสนามจริงไว้เปิด Replay ควบคู่กับพิกัดสดนอกระเบียง) |
+| **ngrok Free URL เปลี่ยนทุกครั้งที่รีสตาร์ต** | URL แบบชั่วคราวทำให้ต้อง Flash บอร์ดใหม่บ่อย | ใช้ **Cloudflare Named Tunnel** หรือ Deploy WebApp Docker ขึ้น **VPS/Cloud (HTTPS โดเมนคงที่)** ก่อนสอบจริง |
+| **TLS/HTTPS Handshake ช้าหรือหลุดบน NB-IoT** | NB-IoT มีแบนด์วิดท์ต่ำและ MTU เล็ก | ใช้ `Connection: close`, ตั้ง Socket Timeout ≥ 15–20 วินาที, ลดขนาด JSON payload ให้กระชับ และเก็บคิวใน LittleFS เพื่อไม่ให้ข้อมูลหาย |
+| **แบตเตอรี่ชาร์จไม่เข้าหรือบอร์ดร้อน** | ลืมปิด `TS Pin` บน AXP2101 หรือเปิดโมเด็มค้าง | บังคับเรียก `disableTSPinMeasure()` ตั้งแต่ `setup()`, ใช้ Time-Sharing + Deep Sleep และเปิด Task Watchdog กันค้าง |
+| **API Key รั่วลง GitHub** | เผลอ Commit ไฟล์ `config.h` ที่มีรหัสจริง | แยกไฟล์ `config.example.h` (Commit ขึ้น Git) กับ `config.h` (ใส่ไว้ใน `.gitignore`) |
+
+---
+
+### 6. โครงสร้างไฟล์เฟิร์มแวร์เป้าหมาย (Target Firmware Structure)
+
+```text
+petgugu/
+├── firmware/
+│   ├── PetguguGPS/
+│   │   ├── PetguguGPS.ino          # Main Time-Sharing State Machine & Deep Sleep Flow
+│   │   ├── config.example.h        # Template ค่า APN, Server URL, Device ID/Key (Commit ขึ้น Git)
+│   │   ├── config.h                # ค่าจริงสำหรับเครื่องพัฒนา (อยู่ใน .gitignore ห้าม Commit)
+│   │   ├── power_manager.h         # ควบคุม AXP2101 PMU, อ่าน Battery Voltage/Percent, Deep Sleep
+│   │   ├── gps_handler.h           # เปิด/ปิด GNSS, จับพิกัด, แปลง UTC Timestamp และความเร็ว
+│   │   ├── network_transport.h     # จัดการ Cellular (SIM7080G Cat-M1/NB-IoT) และ Wi-Fi Fallback
+│   │   ├── api_client.h            # HTTP POST /location, /heartbeat และการ Parse Config Response
+│   │   └── offline_queue.h         # ระบบ LittleFS Store-and-Forward (/queue.jsonl) & Backoff
+│   └── RestoreModemLights/
+│       └── RestoreModemLights.ino  # ยูทิลิตี้รีเซ็ตไฟสถานะโมเด็ม
+└── docs/
+    ├── IOT_API.md                  # สัญญา REST API v1.0 (มีอยู่แล้ว)
+    └── FIRMWARE_GUIDE.md           # คู่มือการ Flash, ตั้งค่า APN และบันทึกผลทดสอบ T1-T8 (Sprint 7)
+```
+
+---
+
+### 7. เช็กลิสต์ความคืบหน้า Phase 2 (Execution Checklist)
+
+- [x] **Pre-req**: เตรียม REST/JSON API v1 (`/location`, `/heartbeat`, `/config`) และผ่าน Smoke Test
+- [ ] **Sprint 1**: ตั้งค่า Arduino IDE / PlatformIO และ Flash `PetguguGPS.ino` รับพิกัดกลางแจ้งสำเร็จ
+- [ ] **Sprint 2**: เชื่อมต่อ Cellular (Cat-M1/NB-IoT) + Ping `8.8.8.8` สำเร็จ (พร้อม Wi-Fi Fallback Flag)
+- [ ] **Sprint 3**: ส่ง `POST /api/iot/location` ผ่าน HTTPS Tunnel จนจุดพิกัดขึ้นหน้า `/dashboard` จริง
+- [ ] **Sprint 4**: เขียน Time-Sharing State Machine + Heartbeat + Deep Sleep (`~1.7–2 mA`) ทำงานวนรอบได้
+- [ ] **Sprint 5**: อ่านแบตเตอรี่จาก AXP2101 + Signal Quality + ทดสอบสลับโหมด Normal / SOS / Power Save
+- [ ] **Sprint 6**: พัฒนา Offline Store-and-Forward (`LittleFS`) และยืนยันการส่งย้อนหลังไม่ซ้ำ (`messageId`)
+- [ ] **Sprint 7**: ผ่านการทดสอบ **T1–T8**, วัดกระแสไฟจริงแต่ละ State, อัปเดตเอกสารและเตรียมสไลด์ Demo สด
+- [ ] **Production Upgrade**: เชื่อม PostgreSQL/Prisma ถาวร + Deploy Docker ขึ้น HTTPS Server จริง (และต่อยอด MQTT/WebSockets ในอนาคต)
 
 ---
 

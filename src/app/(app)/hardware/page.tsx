@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
-import Image from 'next/image';
+import React, { useState, useEffect } from 'react';
 import { DEMO_DEVICES } from '@/data/demo-devices';
-import { DEMO_PETS } from '@/data/demo-pets';
+import { usePets } from '@/hooks/use-pets';
 import { useToast } from '@/contexts/toast-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -140,13 +139,19 @@ const COLLAR_FAQS: FaqItem[] = [
 
 export default function HardwarePage() {
   const { showToast } = useToast();
+  const { pets } = usePets();
 
   const [devices] = useState(DEMO_DEVICES);
-  const [pets] = useState(DEMO_PETS);
   const [showPairModal, setShowPairModal] = useState(false);
   const [collarCodeInput, setCollarCodeInput] = useState('');
-  const [selectedPetId, setSelectedPetId] = useState(pets[0]?.id || '');
+  const [selectedPetId, setSelectedPetId] = useState('');
   const [isPairing, setIsPairing] = useState(false);
+
+  useEffect(() => {
+    if (!selectedPetId && pets.length > 0) {
+      setSelectedPetId(pets[0].id);
+    }
+  }, [pets, selectedPetId]);
 
   // Night light toggle state per collar
   const [activeLights, setActiveLights] = useState<Record<string, boolean>>({});
@@ -265,7 +270,9 @@ export default function HardwarePage() {
         {/* Stack of clean white accordion cards matching Image 2 */}
         <div className="space-y-3">
           {devices.map((dev, idx) => {
-            const pet = pets[idx] || pets[0];
+            const pet = pets.find((p) => p.deviceId === dev.id) || pets[idx] || pets[0];
+            const liveDev = pet?.device || dev;
+            const activeZoneName = pet?.safeZones?.find((z) => z.isActive)?.name || 'ยังไม่กำหนดพื้นที่';
             const isOpen = Boolean(openCollars[dev.id]);
             const isLightOn = Boolean(activeLights[dev.id]);
 
@@ -289,12 +296,12 @@ export default function HardwarePage() {
                     {/* Pet Avatar */}
                     <div className="relative h-12 w-12 flex-shrink-0 rounded-2xl overflow-hidden border border-surface-200 shadow-sm bg-surface-100">
                       {pet?.primaryPhotoUrl ? (
-                        <Image
+                        <img
                           src={pet.primaryPhotoUrl}
                           alt={pet.name}
-                          fill
-                          sizes="48px"
-                          className="object-cover"
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-cover"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center font-bold text-surface-400">
@@ -307,10 +314,10 @@ export default function HardwarePage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-base font-bold text-surface-900 leading-snug group-hover:text-primary-700 transition-colors">
-                          ปลอกคอของ &ldquo;{pet?.name}&rdquo;
+                          ปลอกคอของ &ldquo;{pet?.name || 'สัตว์เลี้ยง'}&rdquo;
                         </h3>
-                        <Badge variant={dev.isOnline ? 'success' : 'surface'} dot size="sm">
-                          {dev.isOnline ? 'กำลังเชื่อมต่อ' : 'ออฟไลน์ / ปิดเครื่อง'}
+                        <Badge variant={liveDev.isOnline ? 'success' : 'surface'} dot size="sm">
+                          {liveDev.isOnline ? 'กำลังเชื่อมต่อ' : 'ออฟไลน์ / ปิดเครื่อง'}
                         </Badge>
                       </div>
 
@@ -319,13 +326,13 @@ export default function HardwarePage() {
                           <Battery
                             className={cn(
                               'w-3.5 h-3.5',
-                              dev.batteryLevel > 30 ? 'text-emerald-500' : 'text-amber-500'
+                              liveDev.batteryLevel > 30 ? 'text-emerald-500' : 'text-amber-500'
                             )}
                           />
-                          แบตเตอรี่ {dev.batteryLevel}%
+                          แบตเตอรี่ {liveDev.batteryLevel}%
                         </span>
                         <span>•</span>
-                        <span>{dev.isOnline ? 'อยู่ในเขตปลอดภัย' : 'อัปเดตล่าสุดเมื่อสักครู่'}</span>
+                        <span>{activeZoneName}</span>
                       </div>
                     </div>
                   </div>
@@ -353,7 +360,7 @@ export default function HardwarePage() {
                           <Battery className="w-3.5 h-3.5 text-emerald-500" /> แบตเตอรี่คงเหลือ
                         </span>
                         <span className="text-sm font-bold text-surface-900 mt-1 block">
-                          {dev.batteryLevel}% {dev.batteryLevel > 30 ? '(ใช้ได้อีก ~4 วัน)' : '(ควรชาร์จ)'}
+                          {liveDev.batteryLevel}% {liveDev.batteryLevel > 30 ? '(ใช้ได้อีก ~4 วัน)' : '(ควรชาร์จ)'}
                         </span>
                       </div>
 
@@ -362,7 +369,7 @@ export default function HardwarePage() {
                           <Compass className="w-3.5 h-3.5 text-indigo-500" /> พิกัดดาวเทียม
                         </span>
                         <span className="text-sm font-bold text-surface-900 mt-1 block">
-                          {dev.isOnline ? 'ระบุตำแหน่งแม่นยำ' : 'กำลังค้นหาสัญญาณ'}
+                          {liveDev.isOnline ? 'ระบุตำแหน่งแม่นยำ' : 'กำลังค้นหาสัญญาณ'}
                         </span>
                       </div>
 
@@ -371,7 +378,7 @@ export default function HardwarePage() {
                           <Wifi className="w-3.5 h-3.5 text-sky-500" /> การเชื่อมต่อ
                         </span>
                         <span className="text-sm font-bold text-surface-900 mt-1 block">
-                          {dev.isOnline ? 'ออนไลน์ตลอดเวลา' : 'พักการส่งข้อมูล'}
+                          {liveDev.isOnline ? 'ออนไลน์ตลอดเวลา' : 'พักการส่งข้อมูล'}
                         </span>
                       </div>
 
@@ -380,7 +387,7 @@ export default function HardwarePage() {
                           <MapPin className="w-3.5 h-3.5 text-primary-500" /> บริเวณที่อยู่
                         </span>
                         <span className="text-sm font-bold text-surface-900 mt-1 block truncate">
-                          {dev.isOnline ? 'ในบ้าน (สุขุมวิท)' : 'บ้านสวน (อารีย์)'}
+                          {activeZoneName}
                         </span>
                       </div>
                     </div>
@@ -395,7 +402,7 @@ export default function HardwarePage() {
                         {/* Beep Sound */}
                         <button
                           type="button"
-                          onClick={() => handleTriggerBeep(pet.name)}
+                          onClick={() => handleTriggerBeep(pet?.name || 'สัตว์เลี้ยง')}
                           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface-100 hover:bg-surface-200 text-surface-800 font-bold text-xs transition active:scale-95 shadow-sm"
                         >
                           <Volume2 className="w-4 h-4 text-primary-600" />
@@ -405,7 +412,7 @@ export default function HardwarePage() {
                         {/* Night Light */}
                         <button
                           type="button"
-                          onClick={() => handleToggleNightLight(dev.id, pet.name)}
+                          onClick={() => handleToggleNightLight(dev.id, pet?.name || 'สัตว์เลี้ยง')}
                           className={cn(
                             'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-xs transition active:scale-95 shadow-sm border',
                             isLightOn
@@ -422,7 +429,7 @@ export default function HardwarePage() {
                         {/* Refresh Signal */}
                         <button
                           type="button"
-                          onClick={() => handleRestartCollar(pet.name)}
+                          onClick={() => handleRestartCollar(pet?.name || 'สัตว์เลี้ยง')}
                           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-surface-200 hover:bg-surface-50 text-surface-600 font-semibold text-xs transition active:scale-95"
                           title="สั่งให้อุปกรณ์รีเฟรชสัญญาณใหม่"
                         >

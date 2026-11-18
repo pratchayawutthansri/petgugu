@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePets } from '@/hooks/use-pets';
 import { useLanguage } from '@/contexts/language-context';
 import { Button } from '@/components/ui/button';
@@ -140,7 +139,10 @@ export default function MyPetsPage() {
           {filteredPets.map((pet) => {
             const isOnline = pet.device?.isOnline ?? true;
             const battery = pet.device?.batteryLevel ?? pet.latestLocation?.batteryLevel ?? 80;
-            const activeZone = pet.safeZones?.[0]?.name || 'บ้าน (สุขุมวิท)';
+            const activeSafeZone = (pet.safeZones || []).find((z) => z.isActive);
+            const activeZone = activeSafeZone
+              ? `${activeSafeZone.name} (${activeSafeZone.radius.toLocaleString()} ม.)`
+              : 'ยังไม่กำหนดพื้นที่ปลอดภัย';
             const isLowBattery = battery <= 30;
 
             return (
@@ -161,12 +163,12 @@ export default function MyPetsPage() {
                     {/* Rounded Pet Portrait with quick camera button */}
                     <div className="relative h-20 w-20 sm:h-24 sm:w-24 flex-shrink-0 rounded-2xl overflow-hidden border border-surface-200 shadow-sm bg-surface-100 group-hover:scale-[1.02] transition-transform">
                       {pet.primaryPhotoUrl ? (
-                        <Image
+                        <img
                           src={pet.primaryPhotoUrl}
                           alt={`รูปโปรไฟล์ของ ${pet.name}`}
-                          fill
-                          sizes="(max-width: 640px) 80px, 96px"
-                          className="object-cover"
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-cover"
                         />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-surface-400">
@@ -216,8 +218,9 @@ export default function MyPetsPage() {
 
                       <p className="text-xs sm:text-sm font-medium text-surface-500 mt-0.5 truncate">
                         {pet.breed}
-                        {pet.gender && ` • ${pet.gender === 'MALE' ? 'เพศผู้' : 'เพศเมีย'}`}
-                        {pet.age && ` • ${pet.age} ปี`}
+                        {pet.gender &&
+                          ` • ${pet.gender === 'MALE' ? 'เพศผู้' : pet.gender === 'FEMALE' ? 'เพศเมีย' : 'ไม่ระบุเพศ'}`}
+                        {pet.age !== undefined && ` • ${pet.age} ปี`}
                       </p>
 
                       <div className="flex items-center gap-2 mt-2 text-xs text-surface-600">
@@ -320,7 +323,7 @@ export default function MyPetsPage() {
                   <div className="flex items-center gap-2">
                     {/* View on Map Button */}
                     <Link
-                      href="/dashboard"
+                      href={`/dashboard?pet=${encodeURIComponent(pet.id)}`}
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface-100 hover:bg-surface-200 text-surface-800 font-bold text-xs transition active:scale-95"
                     >
                       <MapPin className="w-3.5 h-3.5 text-primary-600" />

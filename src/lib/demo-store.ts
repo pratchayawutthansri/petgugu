@@ -6,9 +6,14 @@ import { DEMO_SAFE_ZONES } from '@/data/demo-zones';
 import { DEMO_ALL_LOCATIONS } from '@/data/demo-locations';
 import { DEMO_ALERTS } from '@/data/demo-alerts';
 import { DEMO_VACCINATIONS } from '@/data/demo-vaccinations';
-import { loadPersistedTelemetry, persistTelemetry } from '@/lib/telemetry-repository';
+import {
+  loadPersistedAppState,
+  loadPersistedTelemetry,
+  persistAppState,
+  persistTelemetry,
+} from '@/lib/telemetry-repository';
 
-// Global singleton in-memory database store for Demo Mode
+// Global singleton database store with atomic local JSON persistence for Demo Mode
 class DemoStore {
   private pets: Pet[] = [];
   private users: User[] = [];
@@ -20,14 +25,44 @@ class DemoStore {
   private foundReports: FoundPetReport[] = [];
 
   constructor() {
-    this.reset();
+    this.reset(true);
   }
 
-  public reset() {
-    this.pets = JSON.parse(JSON.stringify(DEMO_PETS));
-    this.users = JSON.parse(JSON.stringify(DEMO_USERS));
-    this.devices = JSON.parse(JSON.stringify(DEMO_DEVICES));
-    this.safeZones = JSON.parse(JSON.stringify(DEMO_SAFE_ZONES));
+  private saveState() {
+    persistAppState({
+      pets: this.pets,
+      users: this.users,
+      devices: this.devices,
+      safeZones: this.safeZones,
+      vaccinations: this.vaccinations,
+      foundReports: this.foundReports,
+    });
+  }
+
+  public reset(hydrateFromDisk = false) {
+    const saved = hydrateFromDisk ? loadPersistedAppState() : null;
+    if (saved) {
+      this.pets = saved.pets;
+      this.users = saved.users;
+      this.devices = Array.isArray(saved.devices) && saved.devices.length > 0
+        ? saved.devices
+        : JSON.parse(JSON.stringify(DEMO_DEVICES));
+      this.safeZones = Array.isArray(saved.safeZones)
+        ? saved.safeZones
+        : this.pets.flatMap((p) => p.safeZones || []);
+      this.vaccinations = Array.isArray(saved.vaccinations)
+        ? saved.vaccinations
+        : JSON.parse(JSON.stringify(DEMO_VACCINATIONS));
+      this.foundReports = Array.isArray(saved.foundReports) ? saved.foundReports : [];
+    } else {
+      this.pets = JSON.parse(JSON.stringify(DEMO_PETS));
+      this.users = JSON.parse(JSON.stringify(DEMO_USERS));
+      this.devices = JSON.parse(JSON.stringify(DEMO_DEVICES));
+      this.safeZones = JSON.parse(JSON.stringify(DEMO_SAFE_ZONES));
+      this.vaccinations = JSON.parse(JSON.stringify(DEMO_VACCINATIONS));
+      this.foundReports = [];
+    }
+
     const demoLocations: LocationHistory[] = JSON.parse(JSON.stringify(DEMO_ALL_LOCATIONS));
     const persistedLocations = loadPersistedTelemetry();
     const knownIds = new Set(demoLocations.map((location) => location.id));
@@ -36,8 +71,6 @@ class DemoStore {
       ...persistedLocations.filter((location) => !knownIds.has(location.id)),
     ];
     this.alerts = JSON.parse(JSON.stringify(DEMO_ALERTS));
-    this.vaccinations = JSON.parse(JSON.stringify(DEMO_VACCINATIONS));
-    this.foundReports = [];
 
     for (const pet of this.pets) {
       const latest = this.locations
@@ -66,6 +99,7 @@ class DemoStore {
 
   public addUser(user: User): User {
     this.users.push(user);
+    this.saveState();
     return user;
   }
 
@@ -85,6 +119,7 @@ class DemoStore {
       ...updates,
       updatedAt: new Date().toISOString(),
     };
+    this.saveState();
     return this.users[idx];
   }
 
@@ -104,9 +139,20 @@ class DemoStore {
     return this.pets.find((p) => p.qrCodeId.toLowerCase() === qrId.toLowerCase());
   }
 
-  public createPet(petData: Omit<Pet, 'id' | 'createdAt' | 'updatedAt' | 'qrCodeId' | 'photos' | 'safeZones' | 'vaccinations'> & { photoUrls: string[] }): Pet {
+  public createPet(
+    petData: Omit<Pet, 'id' | 'createdAt' | 'updatedAt' | 'qrCodeId' | 'photos' | 'safeZones' | 'vaccinations'> & {
+      photoUrls: string[];
+      initialSafeZone?: {
+        name: string;
+        radius: number;
+        latitude?: number;
+        longitude?: number;
+      };
+    }
+  ): Pet {
     const id = `pet_${Date.now()}`;
     const qrCodeId = `QR-${petData.name.toUpperCase().slice(0, 4)}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const now = new Date().toISOString();
 
     const photos = petData.photoUrls.map((url, i) => ({
       id: `photo_${id}_${i}`,
@@ -114,15 +160,34 @@ class DemoStore {
       url,
       isPrimary: i === 0 || url === petData.primaryPhotoUrl,
       caption: `${petData.name} - Photo ${i + 1}`,
-      createdAt: new Date().toISOString(),
+      createdAt: now,
     }));
 
+    const initialZones: SafeZone[] = [];
+    if (petData.initialSafeZone && petData.initialSafeZone.name.trim()) {
+      const zone: SafeZone = {
+        id: `zone_${id}_${Date.now()}`,
+        petId: id,
+        name: petData.initialSafeZone.name.trim(),
+        latitude: petData.initialSafeZone.latitude ?? 13.7314,
+        longitude: petData.initialSafeZone.longitude ?? 100.559,
+        radius: Math.min(5000, Math.max(50, Number(petData.initialSafeZone.radius) || 300)),
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      };
+      initialZones.push(zone);
+      this.safeZones.push(zone);
+    }
+
+    const { initialSafeZone: _ignoredZone, photoUrls: _ignoredPhotos, ...basePetData } = petData;
+
     const newPet: Pet = {
-      ...petData,
+      ...basePetData,
       id,
       qrCodeId,
       photos,
-      safeZones: [],
+      safeZones: initialZones,
       vaccinations: [],
       isLost: false,
       publicProfile: {
@@ -141,8 +206,8 @@ class DemoStore {
         isLost: false,
         customMessage: `ยินดีต้อนรับสู่หน้าข้อมูลของ ${petData.name}`,
       },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
     };
 
     // Link device if provided
@@ -152,6 +217,7 @@ class DemoStore {
     }
 
     this.pets.push(newPet);
+    this.saveState();
     return newPet;
   }
 
@@ -163,6 +229,17 @@ class DemoStore {
       ...updates,
       updatedAt: new Date().toISOString(),
     };
+
+    if (Array.isArray(updates.safeZones)) {
+      this.safeZones = [
+        ...this.safeZones.filter((z) => z.petId !== id),
+        ...updates.safeZones.map((z) => ({
+          ...z,
+          petId: id,
+          radius: Math.min(5000, Math.max(50, Number(z.radius) || 300)),
+        })),
+      ];
+    }
 
     if (typeof updates.isLost === 'boolean' && this.pets[idx].publicProfile) {
       this.pets[idx].publicProfile = {
@@ -179,13 +256,19 @@ class DemoStore {
       if (updatedDevice) this.pets[idx].device = updatedDevice;
     }
 
+    this.saveState();
     return this.pets[idx];
   }
 
   public deletePet(id: string): boolean {
     const initialLen = this.pets.length;
     this.pets = this.pets.filter((p) => p.id !== id);
-    return this.pets.length < initialLen;
+    this.safeZones = this.safeZones.filter((z) => z.petId !== id);
+    if (this.pets.length < initialLen) {
+      this.saveState();
+      return true;
+    }
+    return false;
   }
 
   // --- Safe Zones ---
@@ -342,6 +425,7 @@ class DemoStore {
       status: 'PENDING',
     };
     this.foundReports.unshift(newReport);
+    this.saveState();
     return newReport;
   }
 

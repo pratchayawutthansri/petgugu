@@ -6,7 +6,7 @@ export const DEMO_USERS: User[] = [
     email: 'somchai@pawsandco.com',
     displayName: 'สมชาย ใจดี',
     role: 'USER',
-    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80',
+    avatarUrl: '/images/default-avatar.svg',
     phoneNumber: '081-234-5678',
     preferredLanguage: 'th',
     emailNotifications: true,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
@@ -14,17 +14,60 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { QrBoxScannerDialog } from '@/components/pets/qr-box-scanner-dialog';
 import {
   PawPrint,
   Camera,
   Star,
   Trash2,
-  Cpu,
   QrCode,
   CheckCircle2,
   ArrowLeft,
-  Upload,
+  Smartphone,
+  Plus,
+  Loader2,
+  ShieldCheck,
 } from 'lucide-react';
+
+/**
+ * Compress and resize uploaded images from mobile camera or photo gallery
+ * to keep uploads fast and lightweight.
+ */
+function compressImage(file: File, maxDim = 1200, quality = 0.85): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(event.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('ไม่สามารถอ่านไฟล์รูปภาพได้'));
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('เกิดข้อผิดพลาดในการโหลดไฟล์'));
+    reader.readAsDataURL(file);
+  });
+}
 
 // Preset Dog Images for easy demo selection
 const PRESET_PET_PHOTOS = [
@@ -42,6 +85,12 @@ export default function AddPetPage() {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Hidden file inputs for mobile gallery and mobile camera
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // Photo URLs state (minimum 2, maximum 5)
   const [photos, setPhotos] = useState<string[]>([
@@ -50,6 +99,15 @@ export default function AddPetPage() {
   ]);
   const [primaryPhoto, setPrimaryPhoto] = useState<string>(PRESET_PET_PHOTOS[0]);
   const [customPhotoInput, setCustomPhotoInput] = useState('');
+
+  // Initial Safe Zone Radius configuration
+  const [enableSafeZone, setEnableSafeZone] = useState(true);
+  const [safeZoneName, setSafeZoneName] = useState('บ้าน');
+  const [safeZoneRadius, setSafeZoneRadius] = useState<number>(300);
+
+  // QR Box Pairing state
+  const [showQrScanner, setShowQrScanner] = useState(false);
+  const [pairedBoxCode, setPairedBoxCode] = useState<string>('');
 
   const {
     register,
@@ -74,6 +132,19 @@ export default function AddPetPage() {
     },
   });
 
+  const syncPhotosState = (updated: string[], nextPrimary?: string) => {
+    setPhotos(updated);
+    setValue('photoUrls', updated, { shouldValidate: true });
+    const resolvedPrimary =
+      nextPrimary !== undefined
+        ? nextPrimary
+        : primaryPhoto && updated.includes(primaryPhoto)
+          ? primaryPhoto
+          : updated[0] || '';
+    setPrimaryPhoto(resolvedPrimary);
+    setValue('primaryPhotoUrl', resolvedPrimary, { shouldValidate: true });
+  };
+
   const handleAddPhoto = (url: string) => {
     if (photos.length >= 5) {
       showToast({
@@ -84,35 +155,89 @@ export default function AddPetPage() {
     }
     if (!photos.includes(url)) {
       const updated = [...photos, url];
-      setPhotos(updated);
-      setValue('photoUrls', updated);
-      if (!primaryPhoto) {
-        setPrimaryPhoto(url);
-        setValue('primaryPhotoUrl', url);
-      }
+      syncPhotosState(updated, primaryPhoto || url);
     }
   };
 
-  const handleRemovePhoto = (urlToRemove: string) => {
-    if (photos.length <= 2) {
+  const processSelectedFiles = async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
+
+    const remainingSlots = 5 - photos.length;
+    if (remainingSlots <= 0) {
       showToast({
         type: 'warning',
-        message: 'ต้องมีรูปภาพอย่างน้อย 2 รูป (Minimum 2 photos required)',
+        message: 'เพิ่มรูปครบ 5 รูปแล้ว หากต้องการเพิ่มใหม่กรุณาลบรูปเดิมออกก่อน',
       });
       return;
     }
-    const updated = photos.filter((p) => p !== urlToRemove);
-    setPhotos(updated);
-    setValue('photoUrls', updated);
-    if (primaryPhoto === urlToRemove && updated.length > 0) {
-      setPrimaryPhoto(updated[0]);
-      setValue('primaryPhotoUrl', updated[0]);
+
+    setIsProcessingImage(true);
+    try {
+      const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+      if (imageFiles.length === 0) {
+        showToast({
+          type: 'warning',
+          message: 'กรุณาเลือกไฟล์รูปภาพที่ถูกต้อง (JPG, PNG, WebP)',
+        });
+        return;
+      }
+
+      const filesToProcess = imageFiles.slice(0, remainingSlots);
+      const compressedUrls: string[] = [];
+      for (const file of filesToProcess) {
+        const compressed = await compressImage(file, 1200, 0.85);
+        compressedUrls.push(compressed);
+      }
+
+      const updated = [...photos];
+      for (const url of compressedUrls) {
+        if (!updated.includes(url) && updated.length < 5) {
+          updated.push(url);
+        }
+      }
+
+      // If user had no photos yet, set the first uploaded photo as primary
+      const nextPrimary = primaryPhoto || compressedUrls[0] || updated[0] || '';
+      syncPhotosState(updated, nextPrimary);
+
+      const skippedCount = imageFiles.length - filesToProcess.length;
+      showToast({
+        type: 'success',
+        title: 'เพิ่มรูปภาพสำเร็จ',
+        message:
+          skippedCount > 0
+            ? `เพิ่มรูปจากอุปกรณ์ ${compressedUrls.length} รูป (ครบสูงสุด 5 รูปแล้ว)`
+            : `เพิ่มรูปจากอุปกรณ์ ${compressedUrls.length} รูปเรียบร้อยแล้ว`,
+      });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'อัปโหลดรูปไม่สำเร็จ',
+        message: err?.message || 'ไม่สามารถอ่านไฟล์รูปภาพได้ กรุณาลองใหม่',
+      });
+    } finally {
+      setIsProcessingImage(false);
     }
+  };
+
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      await processSelectedFiles(e.target.files);
+    }
+    e.target.value = '';
+  };
+
+  const handleRemovePhoto = (urlToRemove: string) => {
+    const updated = photos.filter((p) => p !== urlToRemove);
+    const nextPrimary =
+      primaryPhoto === urlToRemove ? updated[0] || '' : primaryPhoto;
+    syncPhotosState(updated, nextPrimary);
   };
 
   const handleSetPrimaryPhoto = (url: string) => {
     setPrimaryPhoto(url);
-    setValue('primaryPhotoUrl', url);
+    setValue('primaryPhotoUrl', url, { shouldValidate: true });
     showToast({
       type: 'info',
       message: 'ตั้งเป็นรูปโปรไฟล์หลักแล้ว',
@@ -126,6 +251,13 @@ export default function AddPetPage() {
         ...data,
         primaryPhotoUrl: primaryPhoto,
         photoUrls: photos,
+        initialSafeZone:
+          enableSafeZone && safeZoneName.trim()
+            ? {
+                name: safeZoneName.trim(),
+                radius: Math.min(5000, Math.max(50, Number(safeZoneRadius) || 300)),
+              }
+            : undefined,
       });
       if (res.success) {
         router.push('/pets');
@@ -233,13 +365,39 @@ export default function AddPetPage() {
 
         {/* Section 2: Photos Upload Gallery (2-5 photos rule) */}
         <Card className="p-6">
+          {/* Hidden file inputs for Mobile Gallery & Mobile Camera */}
+          <input
+            type="file"
+            ref={galleryInputRef}
+            accept="image/*"
+            multiple
+            onChange={handleFileInputChange}
+            className="hidden"
+            aria-hidden="true"
+          />
+          <input
+            type="file"
+            ref={cameraInputRef}
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileInputChange}
+            className="hidden"
+            aria-hidden="true"
+          />
+
           <CardHeader className="p-0 pb-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Camera className="w-5 h-5 text-primary" />
                 <CardTitle>{t('addPet.photosTitle')}</CardTitle>
               </div>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary-50 text-primary-700">
+              <span
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                  photos.length < 2
+                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                    : 'bg-primary-50 text-primary-700'
+                }`}
+              >
                 {photos.length} / 5 รูป
               </span>
             </div>
@@ -249,14 +407,71 @@ export default function AddPetPage() {
           </CardHeader>
 
           <CardContent className="p-0 space-y-4">
-            {/* Active Selected Photos Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {/* Direct Upload Controls (Mobile Photo Library & Camera) */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={isProcessingImage || photos.length >= 5}
+                onClick={() => galleryInputRef.current?.click()}
+                leftIcon={
+                  isProcessingImage ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Smartphone className="w-4 h-4" />
+                  )
+                }
+              >
+                {isProcessingImage ? 'กำลังประมวลผลรูป...' : 'เลือกรูปจากมือถือ / ไฟล์'}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isProcessingImage || photos.length >= 5}
+                onClick={() => cameraInputRef.current?.click()}
+                leftIcon={<Camera className="w-4 h-4 text-primary" />}
+              >
+                ถ่ายรูปด้วยกล้อง
+              </Button>
+
+              <span className="text-[11px] text-surface-400">
+                รองรับ JPG, PNG, WebP (เลือกได้หลายรูปพร้อมกัน)
+              </span>
+            </div>
+
+            {/* Active Selected Photos Grid + Dropzone */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (photos.length < 5) setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                if (e.dataTransfer.files?.length) {
+                  void processSelectedFiles(e.dataTransfer.files);
+                }
+              }}
+              className={`grid grid-cols-2 sm:grid-cols-5 gap-3 rounded-2xl transition-all ${
+                isDragging
+                  ? 'p-2 bg-primary-50/50 ring-2 ring-dashed ring-primary-400'
+                  : ''
+              }`}
+            >
               {photos.map((url, idx) => {
                 const isPrimary = url === primaryPhoto;
                 return (
                   <div
-                    key={url}
-                    className="relative group rounded-xl overflow-hidden aspect-square border-2 border-surface-200 shadow-sm"
+                    key={`${url.slice(0, 48)}-${idx}`}
+                    className={`relative group rounded-xl overflow-hidden aspect-square border-2 shadow-sm transition-all ${
+                      isPrimary
+                        ? 'border-primary ring-2 ring-primary-200'
+                        : 'border-surface-200 hover:border-primary-300'
+                    }`}
                   >
                     <img
                       src={url}
@@ -272,36 +487,71 @@ export default function AddPetPage() {
                       </div>
                     )}
 
-                    {/* Overlay Action Buttons */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    {/* Action Buttons: Always accessible on touch devices, clean hover overlay on desktop */}
+                    <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/70 via-black/35 to-transparent flex items-center justify-end gap-1.5 sm:inset-0 sm:bg-black/45 sm:bg-none sm:opacity-0 sm:group-hover:opacity-100 sm:justify-center transition-opacity">
                       {!isPrimary && (
                         <button
                           type="button"
                           onClick={() => handleSetPrimaryPhoto(url)}
-                          className="p-1.5 rounded-lg bg-white text-surface-900 hover:text-primary transition-colors touch-target"
+                          className="p-1.5 rounded-lg bg-white/95 text-surface-900 hover:text-primary transition-colors shadow-sm"
                           title="ตั้งเป็นรูปหลัก"
+                          aria-label="ตั้งเป็นรูปหลัก"
                         >
-                          <Star className="w-4 h-4" />
+                          <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => handleRemovePhoto(url)}
-                        className="p-1.5 rounded-lg bg-danger text-white hover:bg-danger-600 transition-colors touch-target"
+                        className="p-1.5 rounded-lg bg-danger text-white hover:bg-danger-600 transition-colors shadow-sm"
                         title="ลบรูปนี้"
+                        aria-label="ลบรูปนี้"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </button>
                     </div>
                   </div>
                 );
               })}
+
+              {/* Add Photo Card Slot (opens phone gallery / file picker) */}
+              {photos.length < 5 && (
+                <button
+                  type="button"
+                  disabled={isProcessingImage}
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary-300 bg-primary-50/35 hover:bg-primary-50 active:scale-[0.98] text-primary-700 transition aspect-square gap-1.5 p-3 text-center group disabled:opacity-50"
+                >
+                  <span className="p-2 rounded-xl bg-white text-primary shadow-sm group-hover:scale-110 transition-transform">
+                    {isProcessingImage ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
+                  </span>
+                  <span className="text-xs font-bold leading-tight">
+                    เพิ่มรูปภาพ
+                  </span>
+                  <span className="text-[10px] text-surface-500 leading-tight">
+                    จากมือถือ / ไฟล์
+                  </span>
+                </button>
+              )}
             </div>
+
+            {/* Minimum Photos Helper / Validation Error */}
+            {(photos.length < 2 || errors.photoUrls?.message || errors.primaryPhotoUrl?.message) && (
+              <p className="text-xs font-medium text-danger">
+                {errors.photoUrls?.message ||
+                  errors.primaryPhotoUrl?.message ||
+                  `กรุณาเพิ่มรูปภาพอีกอย่างน้อย ${2 - photos.length} รูป (ขั้นต่ำ 2 รูป)`}
+              </p>
+            )}
 
             {/* Quick Preset Selector for Demo */}
             <div className="pt-3 border-t border-surface-100">
               <label className="block text-xs font-semibold text-surface-500 mb-2">
-                เลือกรูปภาพตัวอย่าง (Photo Gallery):
+                หรือเลือกรูปภาพตัวอย่าง (Photo Gallery):
               </label>
               <div className="flex flex-wrap gap-2">
                 {PRESET_PET_PHOTOS.map((presetUrl, i) => (
@@ -350,47 +600,173 @@ export default function AddPetPage() {
           </CardContent>
         </Card>
 
-        {/* Section 3: Hardware Pairing */}
+        {/* Section 3: Initial Safe Zone Radius */}
+        <Card className="p-6">
+          <CardHeader className="p-0 pb-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-primary" />
+                <CardTitle>กำหนดพื้นที่ปลอดภัยและรัศมี (Safe Zone)</CardTitle>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEnableSafeZone((prev) => !prev)}
+                aria-label="เปิดปิดการตั้งค่าพื้นที่ปลอดภัยเริ่มต้น"
+                className={`w-11 h-6 rounded-full p-0.5 transition-colors ${
+                  enableSafeZone ? 'bg-primary' : 'bg-surface-300'
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 rounded-full bg-white shadow-xs transition-transform ${
+                    enableSafeZone ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+            <p className="text-xs text-surface-500 mt-1">
+              กำหนดรัศมีปลอดภัยเริ่มต้นได้ตั้งแต่ 50 ถึง 5,000 เมตร เพื่อแจ้งเตือนเมื่อสุนัขออกนอกเขต
+            </p>
+          </CardHeader>
+
+          {enableSafeZone && (
+            <CardContent className="p-0 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="ชื่อพื้นที่ปลอดภัย"
+                  placeholder="เช่น บ้าน, สวนสาธารณะ"
+                  value={safeZoneName}
+                  onChange={(e) => setSafeZoneName(e.target.value)}
+                />
+
+                <Input
+                  label="รัศมี (เมตร)"
+                  type="number"
+                  min={50}
+                  max={5000}
+                  step={10}
+                  value={safeZoneRadius}
+                  onChange={(e) => setSafeZoneRadius(Number(e.target.value))}
+                />
+              </div>
+
+              <div className="space-y-2 p-4 rounded-xl bg-surface-50 border border-surface-200">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-surface-600">ปรับรัศมีด้วยแถบเลื่อน</span>
+                  <span className="font-extrabold text-primary-700 bg-primary-50 px-2.5 py-0.5 rounded-full">
+                    {safeZoneRadius >= 1000
+                      ? `${(safeZoneRadius / 1000).toFixed(safeZoneRadius % 1000 === 0 ? 0 : 1)} กม. (${safeZoneRadius.toLocaleString()} ม.)`
+                      : `${safeZoneRadius.toLocaleString()} เมตร`}
+                  </span>
+                </div>
+
+                <input
+                  type="range"
+                  min={50}
+                  max={5000}
+                  step={50}
+                  value={Math.min(5000, Math.max(50, Number(safeZoneRadius) || 50))}
+                  onChange={(e) => setSafeZoneRadius(Number(e.target.value))}
+                  className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-primary bg-surface-200"
+                  aria-label="แถบเลื่อนกำหนดรัศมีพื้นที่ปลอดภัยเริ่มต้น"
+                />
+
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[
+                    { label: '50 ม.', value: 50 },
+                    { label: '100 ม.', value: 100 },
+                    { label: '200 ม.', value: 200 },
+                    { label: '300 ม.', value: 300 },
+                    { label: '500 ม.', value: 500 },
+                    { label: '1 กม.', value: 1000 },
+                    { label: '2 กม.', value: 2000 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => setSafeZoneRadius(preset.value)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-bold border transition-all ${
+                        Number(safeZoneRadius) === preset.value
+                          ? 'bg-primary text-white border-primary'
+                          : 'bg-white text-surface-700 border-surface-200 hover:border-primary-300'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Section 4: QR Box Collar Pairing */}
         <Card className="p-6">
           <CardHeader className="p-0 pb-4">
             <div className="flex items-center gap-2">
-              <Cpu className="w-5 h-5 text-primary" />
+              <QrCode className="w-5 h-5 text-primary" />
               <CardTitle>{t('addPet.deviceTitle')}</CardTitle>
             </div>
+            <p className="text-xs text-surface-500 mt-1">
+              สแกน QR Code ที่ติดอยู่ข้างกล่องปลอกคอ เพื่อเชื่อมต่อกับโปรไฟล์ของน้องหมาอัตโนมัติ
+            </p>
           </CardHeader>
 
-          <CardContent className="p-0 space-y-4">
-            <Select
-              label={t('addPet.deviceSelectLabel')}
-              {...register('deviceId')}
-            >
-              {DEMO_DEVICES.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.model} — SN: {d.serialNumber} ({d.macAddress})
-                </option>
-              ))}
-            </Select>
+          <CardContent className="p-0">
+            {pairedBoxCode ? (
+              <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-emerald-950">
+                      เชื่อมต่อปลอกคอจากกล่องเรียบร้อยแล้ว
+                    </p>
+                    <p className="text-xs text-emerald-700 font-mono truncate mt-0.5">
+                      รหัสกล่อง: {pairedBoxCode}
+                    </p>
+                  </div>
+                </div>
 
-            <div className="p-4 rounded-xl bg-surface-50 border border-surface-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-3 text-xs text-surface-600">
-                <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
-                <span>อุปกรณ์พร้อมจับคู่กับปลอกคอสุนัขแบบอัตโนมัติ (Mock Mode)</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<QrCode className="w-4 h-4" />}
+                  onClick={() => setShowQrScanner(true)}
+                  className="bg-white flex-shrink-0"
+                >
+                  สแกนใหม่
+                </Button>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                leftIcon={<QrCode className="w-4 h-4" />}
-                onClick={() => {
-                  showToast({
-                    type: 'info',
-                    message: 'สแกน QR Code สำเร็จ — ผูกอุปกรณ์อัตโนมัติ',
-                  });
-                }}
-              >
-                สแกน QR ที่ตัวเครื่อง
-              </Button>
-            </div>
+            ) : (
+              <div className="p-5 rounded-2xl border-2 border-dashed border-surface-200 bg-surface-50/60 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5 text-center sm:text-left">
+                  <span className="hidden sm:flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-white border border-surface-200 text-primary shadow-subtle">
+                    <QrCode className="w-6 h-6" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-surface-900">
+                      สแกน QR Code ที่ตัวกล่อง
+                    </p>
+                    <p className="text-xs text-surface-500 mt-0.5">
+                      เปิดกล้องสแกนสติกเกอร์ QR ข้างกล่องปลอกคอเพื่อจับคู่อุปกรณ์ได้ทันที
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  leftIcon={<QrCode className="w-4 h-4" />}
+                  onClick={() => setShowQrScanner(true)}
+                  className="w-full sm:w-auto flex-shrink-0"
+                >
+                  สแกน QR ที่ตัวกล่อง
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -412,6 +788,21 @@ export default function AddPetPage() {
           </Button>
         </div>
       </form>
+
+      {/* QR Box Scanner Modal */}
+      <QrBoxScannerDialog
+        isOpen={showQrScanner}
+        onClose={() => setShowQrScanner(false)}
+        onScanned={(code) => {
+          setPairedBoxCode(code);
+          setValue('deviceId', DEMO_DEVICES[0].id);
+          showToast({
+            type: 'success',
+            title: 'สแกน QR ที่ตัวกล่องสำเร็จ',
+            message: `เชื่อมต่อปลอกคอรหัส ${code} เรียบร้อยแล้ว`,
+          });
+        }}
+      />
     </div>
   );
 }

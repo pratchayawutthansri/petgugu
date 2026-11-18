@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
@@ -16,46 +16,49 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export function Sidebar() {
+export const Sidebar = React.memo(function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { t } = useLanguage();
 
-  const navItems = [
-    {
-      name: t('nav.dashboard'),
-      href: '/dashboard',
-      icon: LayoutDashboard,
-    },
-    {
-      name: t('nav.pets'),
-      href: '/pets',
-      icon: PawPrint,
-    },
-    {
-      name: t('nav.history'),
-      href: '/history',
-      icon: History,
-    },
-    {
-      name: t('nav.hardware'),
-      href: '/hardware',
-      icon: Cpu,
-    },
-    {
-      name: t('nav.settings'),
-      href: '/settings',
-      icon: Settings,
-    },
-  ];
+  const navItems = useMemo(() => {
+    const items = [
+      {
+        name: t('nav.dashboard'),
+        href: '/dashboard',
+        icon: LayoutDashboard,
+      },
+      {
+        name: t('nav.pets'),
+        href: '/pets',
+        icon: PawPrint,
+      },
+      {
+        name: t('nav.history'),
+        href: '/history',
+        icon: History,
+      },
+      {
+        name: t('nav.hardware'),
+        href: '/hardware',
+        icon: Cpu,
+      },
+      {
+        name: t('nav.settings'),
+        href: '/settings',
+        icon: Settings,
+      },
+    ];
 
-  if (user?.role === 'ADMIN') {
-    navItems.push({
-      name: t('nav.admin'),
-      href: '/admin',
-      icon: ShieldAlert,
-    });
-  }
+    if (user?.role === 'ADMIN') {
+      items.push({
+        name: t('nav.admin'),
+        href: '/admin',
+        icon: ShieldAlert,
+      });
+    }
+    return items;
+  }, [t, user?.role]);
 
   return (
     <aside className="hidden lg:flex flex-col w-[270px] h-dvh bg-white border-r border-neutral-200/80 fixed top-0 left-0 z-sticky select-none shadow-[2px_0_12px_rgba(0,0,0,0.02)]">
@@ -101,41 +104,26 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Hardware Status Widget */}
-      <div className="p-3.5 mx-3.5 mb-3 rounded-2xl bg-neutral-50 border border-neutral-200/80 text-left">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-bold text-neutral-900">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span>LILYGO T-SIM7080G</span>
-          </div>
-          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.5 rounded-md">
-            Online
-          </span>
-        </div>
-        <p className="text-[11px] text-neutral-500 mt-1.5 leading-snug">
-          NB-IoT / Cat-M1 · GPS Active
-        </p>
-      </div>
-
       {/* Bottom User Profile Section */}
       {user && (
         <div className="p-3.5 border-t border-neutral-200/80 flex items-center justify-between bg-neutral-50/50">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <Link href="/settings" className="flex items-center gap-2.5 min-w-0 group" title="ตั้งค่าโปรไฟล์และเปลี่ยนรูปภาพ">
             <img
-              src={user.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'}
+              src={
+                user.avatarUrl && !user.avatarUrl.includes('1535713875002')
+                  ? user.avatarUrl
+                  : '/images/default-avatar.svg'
+              }
               alt={user.displayName}
-              className="w-9 h-9 rounded-full object-cover border border-neutral-200 flex-shrink-0"
+              className="w-9 h-9 rounded-full object-cover border border-neutral-200 flex-shrink-0 group-hover:ring-2 group-hover:ring-primary-200 transition-all"
             />
             <div className="min-w-0 text-left">
-              <p className="text-xs font-bold text-neutral-900 truncate">
+              <p className="text-xs font-bold text-neutral-900 truncate group-hover:text-primary-700 transition-colors">
                 {user.displayName}
               </p>
               <p className="text-[11px] text-neutral-500 truncate">{user.email}</p>
             </div>
-          </div>
+          </Link>
 
           <button
             type="button"
@@ -150,4 +138,4 @@ export function Sidebar() {
       )}
     </aside>
   );
-}
+});

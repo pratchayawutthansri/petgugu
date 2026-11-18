@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useLanguage } from '@/contexts/language-context';
 import { useToast } from '@/contexts/toast-context';
+import { usePets } from '@/hooks/use-pets';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -20,34 +21,130 @@ import {
   Save,
   Check,
   Zap,
+  Camera,
 } from 'lucide-react';
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { locale, setLocale, t } = useLanguage();
   const { showToast } = useToast();
+  const { pets } = usePets();
 
   const [activeTab, setActiveTab] = useState<'account' | 'notifications' | 'language' | 'plan'>('account');
 
-  // Account State
+  // Account State (synced with current user)
   const [displayName, setDisplayName] = useState(user?.displayName || 'สมชาย ใจดี');
   const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '081-234-5678');
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '/images/default-avatar.svg');
+  const [isSavingAccount, setIsSavingAccount] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  // Notification Toggles State
+  // Notification Toggles State (persisted in localStorage)
   const [zoneAlert, setZoneAlert] = useState(true);
   const [lowBatAlert, setLowBatAlert] = useState(true);
   const [offlineAlert, setOfflineAlert] = useState(true);
   const [weeklyReport, setWeeklyReport] = useState(false);
 
-  const handleSaveAccount = () => {
-    showToast({
-      type: 'success',
-      title: 'บันทึกสำเร็จ',
-      message: 'อัปเดตข้อมูลบัญชีผู้ใช้เรียบร้อยแล้ว',
-    });
+  useEffect(() => {
+    if (user) {
+      setDisplayName(user.displayName || 'สมชาย ใจดี');
+      setPhoneNumber(user.phoneNumber || '081-234-5678');
+      setAvatarUrl(
+        user.avatarUrl && !user.avatarUrl.includes('1535713875002')
+          ? user.avatarUrl
+          : '/images/default-avatar.svg'
+      );
+    }
+  }, [user]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('paws_notification_prefs');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.zoneAlert === 'boolean') setZoneAlert(parsed.zoneAlert);
+        if (typeof parsed.lowBatAlert === 'boolean') setLowBatAlert(parsed.lowBatAlert);
+        if (typeof parsed.offlineAlert === 'boolean') setOfflineAlert(parsed.offlineAlert);
+        if (typeof parsed.weeklyReport === 'boolean') setWeeklyReport(parsed.weeklyReport);
+      }
+    } catch {
+      // Ignore malformed storage
+    }
+  }, []);
+
+  const totalSafeZones = pets.reduce((sum, p) => sum + (p.safeZones?.length || 0), 0);
+
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) {
+      showToast({ type: 'warning', message: 'กรุณาเลือกไฟล์รูปภาพ (JPG, PNG, WebP)' });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          setAvatarUrl(dataUrl);
+          void updateProfile({ avatarUrl: dataUrl });
+          showToast({ type: 'success', title: 'เปลี่ยนรูปโปรไฟล์แล้ว', message: 'อัปเดตรูปโปรไฟล์ของคุณเรียบร้อยแล้ว' });
+        }
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleSaveAccount = async () => {
+    if (!displayName.trim()) {
+      showToast({ type: 'warning', message: 'กรุณากรอกชื่อที่แสดง' });
+      return;
+    }
+    setIsSavingAccount(true);
+    try {
+      const res = await updateProfile({
+        displayName: displayName.trim(),
+        phoneNumber: phoneNumber.trim(),
+        avatarUrl,
+      });
+      if (res.success) {
+        showToast({
+          type: 'success',
+          title: 'บันทึกสำเร็จ',
+          message: 'อัปเดตข้อมูลบัญชีผู้ใช้เรียบร้อยแล้ว',
+        });
+      } else {
+        showToast({
+          type: 'error',
+          title: 'บันทึกไม่สำเร็จ',
+          message: res.error || 'ไม่สามารถบันทึกข้อมูลบัญชีได้',
+        });
+      }
+    } finally {
+      setIsSavingAccount(false);
+    }
   };
 
   const handleSaveNotifications = () => {
+    try {
+      localStorage.setItem(
+        'paws_notification_prefs',
+        JSON.stringify({ zoneAlert, lowBatAlert, offlineAlert, weeklyReport })
+      );
+    } catch {
+      // Ignore storage quota errors
+    }
     showToast({
       type: 'success',
       title: 'บันทึกสำเร็จ',
@@ -83,6 +180,37 @@ export default function SettingsPage() {
           </CardHeader>
 
           <CardContent className="p-0 space-y-4">
+            {/* Profile Avatar Picker */}
+            <div className="flex items-center gap-4 pb-2">
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+                aria-hidden="true"
+              />
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="w-16 h-16 rounded-full object-cover border-2 border-surface-200 bg-surface-50 flex-shrink-0"
+              />
+              <div className="space-y-1.5">
+                <p className="text-sm font-bold text-surface-900">รูปโปรไฟล์ผู้ใช้</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<Camera className="w-3.5 h-3.5" />}
+                    onClick={() => avatarInputRef.current?.click()}
+                  >
+                    เปลี่ยนรูปจากเครื่อง / มือถือ
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             <Input
               label={t('settings.displayName')}
               value={displayName}
@@ -105,6 +233,7 @@ export default function SettingsPage() {
             <div className="pt-4 flex justify-end">
               <Button
                 variant="primary"
+                isLoading={isSavingAccount}
                 onClick={handleSaveAccount}
                 leftIcon={<Save className="w-4 h-4" />}
               >
@@ -241,17 +370,23 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="p-4 rounded-xl bg-surface-50 border border-surface-100 text-left">
                 <span className="text-xs text-surface-500 block">สัตว์เลี้ยงที่ดูแล</span>
-                <span className="text-lg font-bold text-surface-900">2 / 5 ตัว</span>
+                <span className="text-lg font-bold text-surface-900">{pets.length} / 5 ตัว</span>
                 <div className="w-full bg-surface-200 h-1.5 rounded-full mt-2 overflow-hidden">
-                  <div className="bg-primary h-full rounded-full" style={{ width: '40%' }} />
+                  <div
+                    className="bg-primary h-full rounded-full transition-all"
+                    style={{ width: `${Math.min(100, (pets.length / 5) * 100)}%` }}
+                  />
                 </div>
               </div>
 
               <div className="p-4 rounded-xl bg-surface-50 border border-surface-100 text-left">
                 <span className="text-xs text-surface-500 block">พื้นที่ปลอดภัย (Safe Zones)</span>
-                <span className="text-lg font-bold text-surface-900">2 / 3 จุด</span>
+                <span className="text-lg font-bold text-surface-900">{totalSafeZones} / 10 จุด</span>
                 <div className="w-full bg-surface-200 h-1.5 rounded-full mt-2 overflow-hidden">
-                  <div className="bg-secondary h-full rounded-full" style={{ width: '66%' }} />
+                  <div
+                    className="bg-secondary h-full rounded-full transition-all"
+                    style={{ width: `${Math.min(100, (totalSafeZones / 10) * 100)}%` }}
+                  />
                 </div>
               </div>
 

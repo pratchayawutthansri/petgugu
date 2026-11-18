@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
 import { useLanguage } from '@/contexts/language-context';
@@ -17,22 +17,52 @@ import {
 import { cn, formatTimeAgo } from '@/lib/utils';
 import { DEMO_ALERTS } from '@/data/demo-alerts';
 
-export function Header() {
+export const Header = React.memo(function Header() {
   const { user, logout } = useAuth();
   const { locale, setLocale, t } = useLanguage();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showAlertMenu, setShowAlertMenu] = useState(false);
   const [alerts, setAlerts] = useState(DEMO_ALERTS);
+  const headerRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!showUserMenu && !showLangMenu && !showAlertMenu) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+        setShowLangMenu(false);
+        setShowAlertMenu(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowUserMenu(false);
+        setShowLangMenu(false);
+        setShowAlertMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showUserMenu, showLangMenu, showAlertMenu]);
 
   const unreadAlertsCount = alerts.filter((a) => !a.isRead).length;
 
   const markAllAsRead = () => {
-    setAlerts(alerts.map((a) => ({ ...a, isRead: true })));
+    setAlerts((prev) => prev.map((a) => ({ ...a, isRead: true })));
   };
 
   return (
-    <header className="sticky top-0 z-sticky h-16 bg-white/95 backdrop-blur-md border-b border-neutral-200/80 px-4 sm:px-6 flex items-center justify-between select-none">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-sticky h-16 bg-white border-b border-neutral-200/80 px-4 sm:px-6 flex items-center justify-between select-none"
+    >
       {/* Left: Mobile Brand / Title */}
       <div className="flex items-center gap-3">
         <Link href="/dashboard" className="flex items-center gap-2.5 lg:hidden">
@@ -46,10 +76,7 @@ export function Header() {
 
         {/* System Status Badge */}
         <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-100 border border-neutral-200/80 text-xs font-medium text-neutral-700">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
+          <span className="h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-200" />
           <span>IoT System Active</span>
         </div>
       </div>
@@ -209,7 +236,11 @@ export function Header() {
               aria-label="User Account"
             >
               <img
-                src={user.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'}
+                src={
+                  user.avatarUrl && !user.avatarUrl.includes('1535713875002')
+                    ? user.avatarUrl
+                    : '/images/default-avatar.svg'
+                }
                 alt={user.displayName}
                 className="w-8 h-8 rounded-full object-cover border border-neutral-200"
               />
@@ -268,4 +299,4 @@ export function Header() {
       </div>
     </header>
   );
-}
+});

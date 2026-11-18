@@ -6,9 +6,6 @@
    Paws&Co. — Global Styles & Design System
    =================================== */
 
-/* --- Google Fonts --- */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap');
-
 /* --- Base Resets --- */
 @layer base {
   :root {
@@ -236,25 +233,16 @@
   }
 }
 
-/* --- Leaflet Map Overrides & Performance Acceleration --- */
+/* --- Leaflet Map Overrides (let Leaflet manage its own GPU transforms cleanly) --- */
 .leaflet-container {
   @apply font-sans rounded-2xl;
   z-index: 1;
   outline: none;
+  contain: layout style paint;
 }
 
-.leaflet-pane,
-.leaflet-marker-icon,
-.leaflet-zoom-animated,
 .custom-pet-marker {
-  transform: translateZ(0);
-  will-change: transform;
   backface-visibility: hidden;
-}
-
-.leaflet-tile {
-  image-rendering: -webkit-optimize-contrast;
-  will-change: transform;
 }
 
 .leaflet-control-zoom a {

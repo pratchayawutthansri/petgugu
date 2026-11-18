@@ -1,44 +1,74 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { LocationHistory, RouteStatistics } from '@/types';
 import { api } from '@/lib/api-client';
 import { calculateDistanceMeters } from '@/lib/utils';
 
-export function useLocations(petId: string, from?: string, to?: string) {
-  const [locations, setLocations] = useState<LocationHistory[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+// Client-side cache per query key for instant switching between pets & history filters
+const locationsCache = new Map<string, LocationHistory[]>();
 
-  const fetchLocations = useCallback(async (options?: { silent?: boolean }) => {
-    if (!petId) return;
-    if (!options?.silent) setIsLoading(true);
-    setError(null);
-    try {
-      const res = await api.getPetHistory(petId, from, to);
-      if (res.success && res.data) {
-        const incomingLocations = res.data;
-        setLocations((prev) => {
-          if (
-            prev.length === incomingLocations.length &&
-            prev[prev.length - 1]?.id === incomingLocations[incomingLocations.length - 1]?.id
-          ) {
-            return prev;
-          }
-          return incomingLocations;
-        });
-      } else {
-        setError(res.error || 'Failed to load telemetry');
+export function useLocations(petId: string, from?: string, to?: string) {
+  const cacheKey = `${petId}|${from || ''}|${to || ''}`;
+  const cached = locationsCache.get(cacheKey);
+
+  const [locations, setLocations] = useState<LocationHistory[]>(() => cached ?? []);
+  const [isLoading, setIsLoading] = useState<boolean>(() => !cached);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const fetchLocations = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!petId) return;
+
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      const hasCache = locationsCache.has(cacheKey);
+      if (!options?.silent && !hasCache) setIsLoading(true);
+      setError(null);
+
+      try {
+        const res = await api.getPetHistory(petId, from, to, controller.signal);
+        if (controller.signal.aborted) return;
+
+        if (res.success && res.data) {
+          const incomingLocations = res.data;
+          locationsCache.set(cacheKey, incomingLocations);
+          setLocations((prev) => {
+            if (
+              prev.length === incomingLocations.length &&
+              prev[prev.length - 1]?.id === incomingLocations[incomingLocations.length - 1]?.id
+            ) {
+              return prev;
+            }
+            return incomingLocations;
+          });
+        } else if (res.error !== 'Request aborted') {
+          setError(res.error || 'Failed to load telemetry');
+        }
+      } catch (err: any) {
+        if (!controller.signal.aborted) {
+          setError(err.message || 'Error fetching telemetry');
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
       }
-    } catch (err: any) {
-      setError(err.message || 'Error fetching telemetry');
-    } finally {
-      if (!options?.silent) setIsLoading(false);
-    }
-  }, [petId, from, to]);
+    },
+    [petId, from, to, cacheKey]
+  );
 
   useEffect(() => {
-    fetchLocations();
+    const existing = locationsCache.get(cacheKey);
+    if (existing) {
+      setLocations(existing);
+      setIsLoading(false);
+    }
+
+    void fetchLocations({ silent: Boolean(existing) });
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
@@ -54,10 +84,11 @@ export function useLocations(petId: string, from?: string, to?: string) {
     }, 15_000);
 
     return () => {
+      abortRef.current?.abort();
       window.clearInterval(pollingId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchLocations]);
+  }, [fetchLocations, cacheKey]);
 
   // Compute Route Statistics
   const statistics = useMemo<RouteStatistics>(() => {

@@ -91,7 +91,9 @@ const config: Config = {
       },
       fontFamily: {
         sans: [
-          'Inter',
+          'var(--font-jakarta)',
+          'var(--font-thai)',
+          'Plus Jakarta Sans',
           'Noto Sans Thai',
           'system-ui',
           '-apple-system',

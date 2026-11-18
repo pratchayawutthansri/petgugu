@@ -1,5 +1,17 @@
 import { z } from 'zod';
 
+const photoUrlSchema = z
+  .string()
+  .min(1, 'ต้องมีรูปภาพ')
+  .refine(
+    (val) =>
+      val.startsWith('data:image/') ||
+      val.startsWith('http://') ||
+      val.startsWith('https://') ||
+      val.startsWith('/'),
+    'รูปภาพต้องเป็นไฟล์ที่อัปโหลดหรือลิงก์ URL ที่ถูกต้อง'
+  );
+
 export const createPetSchema = z.object({
   name: z
     .string()
@@ -24,9 +36,9 @@ export const createPetSchema = z.object({
     .min(0.1, 'น้ำหนักต้องมากกว่า 0.1 กก.')
     .max(150, 'น้ำหนักต้องไม่เกิน 150 กก.'),
   healthNotes: z.string().max(500, 'บันทึกสุขภาพยาวเกินไป').optional(),
-  primaryPhotoUrl: z.string().url('URL รูปภาพไม่ถูกต้อง').min(1, 'ต้องมีรูปภาพหลัก'),
+  primaryPhotoUrl: photoUrlSchema,
   photoUrls: z
-    .array(z.string().url('URL รูปภาพไม่ถูกต้อง'))
+    .array(photoUrlSchema)
     .min(2, 'ต้องมีรูปภาพอย่างน้อย 2 รูป (Minimum 2 photos required)')
     .max(5, 'มีรูปภาพได้สูงสุด 5 รูป (Maximum 5 photos allowed)'),
   deviceId: z.string().optional(),

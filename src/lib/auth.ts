@@ -74,7 +74,7 @@ export function verifyDemoCredentials(
       email: normalized.includes('@') ? normalized : `${normalized}@pawsandco.com`,
       displayName: normalized.split('@')[0],
       role: 'USER',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80',
+      avatarUrl: '/images/default-avatar.svg',
       preferredLanguage: 'th',
       emailNotifications: true,
       smsNotifications: false,

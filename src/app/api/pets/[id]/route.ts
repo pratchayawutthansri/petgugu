@@ -42,12 +42,24 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const body = await request.json();
+    let body: Record<string, any>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'ข้อมูล JSON ไม่ถูกต้อง' },
+        { status: 400 }
+      );
+    }
+
     const pet = demoStore.getPetById(params.id);
     if (!pet || pet.userId !== await getUserId()) {
       return NextResponse.json({ success: false, error: 'Pet not found' }, { status: 404 });
     }
-    const updated = demoStore.updatePet(params.id, body);
+
+    // Prevent overwriting protected identifier fields
+    const { id: _ignoreId, userId: _ignoreUserId, ...safeUpdates } = body || {};
+    const updated = demoStore.updatePet(params.id, safeUpdates);
     if (!updated) {
       return NextResponse.json(
         { success: false, error: 'Pet not found' },

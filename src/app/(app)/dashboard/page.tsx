@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePets } from '@/hooks/use-pets';
 import { useToast } from '@/contexts/toast-context';
 import { TrackingMap } from '@/components/map/dynamic-tracking-map';
 import { ConfirmDialog } from '@/components/ui/dialog';
+import { SafeZoneDialog } from '@/components/pets/safe-zone-dialog';
 import {
   AlertTriangle,
   ArrowRight,
@@ -15,17 +16,31 @@ import {
   ExternalLink,
   LocateFixed,
   MapPin,
+  PawPrint,
   Plus,
+  ShieldCheck,
   Signal,
   Zap,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, calculateDistanceMeters } from '@/lib/utils';
+import type { MapFocusCircle } from '@/components/map/leaflet-map-inner';
 
 export default function DashboardPage() {
   const { pets, isLoading, updatePet } = usePets();
   const { showToast } = useToast();
   const [selectedPetId, setSelectedPetId] = useState('pet_mochi_01');
   const [sosPetId, setSosPetId] = useState<string | null>(null);
+  const [showSafeZoneDialog, setShowSafeZoneDialog] = useState(false);
+  const [focusTrigger, setFocusTrigger] = useState(0);
+  const [focusCircle, setFocusCircle] = useState<MapFocusCircle | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const petParam = new URLSearchParams(window.location.search).get('pet');
+    if (petParam) {
+      setSelectedPetId(petParam);
+    }
+  }, []);
 
   useEffect(() => {
     if (pets.length > 0 && !pets.some((pet) => pet.id === selectedPetId)) {
@@ -33,7 +48,10 @@ export default function DashboardPage() {
     }
   }, [pets, selectedPetId]);
 
-  const activePet = pets.find((pet) => pet.id === selectedPetId) || pets[0];
+  const activePet = useMemo(
+    () => pets.find((pet) => pet.id === selectedPetId) || pets[0],
+    [pets, selectedPetId]
+  );
 
   const handleTogglePowerSave = async () => {
     if (!activePet) return;
@@ -59,6 +77,7 @@ export default function DashboardPage() {
 
   const handleFocusLocation = () => {
     if (!activePet) return;
+    setFocusTrigger((prev) => prev + 1);
     showToast({
       type: 'info',
       title: 'โฟกัสตำแหน่ง',
@@ -97,6 +116,17 @@ export default function DashboardPage() {
 
   const activeBattery = activePet?.device?.batteryLevel ?? activePet?.latestLocation?.batteryLevel ?? 80;
   const activeOnline = activePet?.device?.isOnline ?? true;
+  const primarySafeZone = useMemo(() => {
+    const activeSafeZones = (activePet?.safeZones || []).filter((z) => z.isActive);
+    if (activeSafeZones.length === 0) return undefined;
+    const petLat = activePet?.latestLocation?.latitude ?? 13.7314;
+    const petLng = activePet?.latestLocation?.longitude ?? 100.559;
+    return [...activeSafeZones].sort((a, b) => {
+      const distA = calculateDistanceMeters(petLat, petLng, a.latitude, a.longitude);
+      const distB = calculateDistanceMeters(petLat, petLng, b.latitude, b.longitude);
+      return distA - distB;
+    })[0];
+  }, [activePet?.safeZones, activePet?.latestLocation?.latitude, activePet?.latestLocation?.longitude]);
 
   return (
     <div className="space-y-4 text-neutral-900 selection:bg-neutral-900 selection:text-white">
@@ -145,6 +175,8 @@ export default function DashboardPage() {
               pets={pets}
               selectedPetId={selectedPetId}
               onSelectPet={setSelectedPetId}
+              focusTrigger={focusTrigger}
+              focusCircle={focusCircle}
               className="h-full min-h-[520px] lg:min-h-[620px] w-full"
             />
           </div>
@@ -209,11 +241,17 @@ export default function DashboardPage() {
             <div className="my-auto py-4 text-center">
               {/* Pet Photo */}
               <div className="relative inline-block mx-auto">
-                <img
-                  src={activePet.primaryPhotoUrl}
-                  alt={activePet.name}
-                  className="w-20 h-20 rounded-2xl object-cover border-2 border-neutral-100 shadow-xs mx-auto"
-                />
+                {activePet.primaryPhotoUrl ? (
+                  <img
+                    src={activePet.primaryPhotoUrl}
+                    alt={activePet.name}
+                    className="w-20 h-20 rounded-2xl object-cover border-2 border-neutral-100 shadow-xs mx-auto"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl bg-neutral-100 border-2 border-neutral-200 flex items-center justify-center text-neutral-400 mx-auto">
+                    <PawPrint className="w-8 h-8" />
+                  </div>
+                )}
                 <span
                   className={cn(
                     'absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white',
@@ -241,16 +279,27 @@ export default function DashboardPage() {
                     <AlertTriangle className="w-3.5 h-3.5" />
                     กำลังค้นหา / โหมดฉุกเฉิน
                   </span>
-                ) : (activePet.safeZones?.length || 0) > 0 ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                ) : primarySafeZone ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowSafeZoneDialog(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 transition"
+                    title="คลิกเพื่อปรับรัศมีพื้นที่ปลอดภัย"
+                  >
                     <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    อยู่ในพื้นที่ปลอดภัย (บ้าน)
-                  </span>
+                    <span>
+                      {primarySafeZone.name} (รัศมี {primarySafeZone.radius.toLocaleString()} ม.)
+                    </span>
+                  </button>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700 border border-neutral-200">
+                  <button
+                    type="button"
+                    onClick={() => setShowSafeZoneDialog(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border border-neutral-200 transition"
+                  >
                     <span className="w-2 h-2 rounded-full bg-neutral-400" />
-                    สถานะปกติ
-                  </span>
+                    <span>ยังไม่ได้กำหนดรัศมี (คลิกตั้งค่า)</span>
+                  </button>
                 )}
               </div>
 
@@ -295,6 +344,21 @@ export default function DashboardPage() {
             >
               <Bell className="w-4 h-4 text-neutral-700" />
               <span>ส่งเสียงเรียกปลอกคอ</span>
+            </button>
+
+            {/* Safe Zone Radius Configuration Button */}
+            <button
+              type="button"
+              onClick={() => setShowSafeZoneDialog(true)}
+              className="w-full py-3 px-4 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100/70 text-indigo-900 font-semibold text-xs sm:text-sm flex items-center justify-between gap-2 transition-all active:scale-[0.99]"
+            >
+              <span className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                <span>กำหนดรัศมีพื้นที่ปลอดภัย</span>
+              </span>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white text-indigo-700 border border-indigo-200/80">
+                {primarySafeZone ? `${primarySafeZone.radius.toLocaleString()} ม.` : 'ตั้งค่า'}
+              </span>
             </button>
 
             {/* Locate Button */}
@@ -392,6 +456,22 @@ export default function DashboardPage() {
           </div>
         </aside>
       </section>
+
+      {/* Safe Zone Radius Configuration Dialog */}
+      <SafeZoneDialog
+        isOpen={showSafeZoneDialog}
+        onClose={() => setShowSafeZoneDialog(false)}
+        pet={activePet || null}
+        onZoneSaved={(savedZone) => {
+          setFocusCircle({
+            latitude: savedZone.latitude,
+            longitude: savedZone.longitude,
+            radius: savedZone.radius,
+            trigger: Date.now(),
+          });
+        }}
+        onSave={updatePet}
+      />
 
       {/* SOS Confirmation Dialog */}
       <ConfirmDialog

@@ -112,7 +112,7 @@ export default function HistoryPage() {
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:w-[620px]">
           <label className="relative">
             <span className="sr-only">{t('history.selectPet')}</span>
-            {selectedPet ? (
+            {selectedPet?.primaryPhotoUrl ? (
               <img src={selectedPet.primaryPhotoUrl} alt="" className="pointer-events-none absolute left-3 top-1/2 z-10 h-8 w-8 -translate-y-1/2 rounded-xl object-cover" />
             ) : (
               <PawPrint className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-primary-500" />
@@ -147,10 +147,22 @@ export default function HistoryPage() {
         {/* Mobile Top Bar */}
         <div className="absolute left-3 top-3 z-20 flex max-w-[calc(100%-24px)] gap-2 lg:hidden">
           <span className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border border-white/70 bg-white/95 px-3 text-sm font-bold text-surface-800 shadow-dropdown backdrop-blur-md">
-            <img src={selectedPet?.primaryPhotoUrl} alt="" className="h-7 w-7 rounded-lg object-cover" />
-            <span className="max-w-28 truncate">{selectedPet?.name}</span>
+            {selectedPet?.primaryPhotoUrl ? (
+              <img src={selectedPet.primaryPhotoUrl} alt="" className="h-7 w-7 rounded-lg object-cover" />
+            ) : (
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-50 text-primary-700">
+                <PawPrint className="h-4 w-4" />
+              </span>
+            )}
+            <span className="max-w-28 truncate">{selectedPet?.name || 'สัตว์เลี้ยง'}</span>
           </span>
-          <button type="button" className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/70 bg-white/95 text-surface-700 shadow-dropdown" aria-label="ตัวกรองเส้นทาง">
+          <button
+            type="button"
+            onClick={() => setSheetMode((prev) => (prev === 'expanded' ? 'peek' : 'expanded'))}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/70 bg-white/95 text-surface-700 shadow-dropdown active:scale-95 transition"
+            aria-label="เปิดดูสถิติและกิจกรรมทั้งหมด"
+            title="ขยาย/ย่อแผงกิจกรรม"
+          >
             <SlidersHorizontal className="h-5 w-5" />
           </button>
         </div>
@@ -251,10 +263,10 @@ export default function HistoryPage() {
         {/* ============================================================ */}
         <div
           className={cn(
-            'absolute inset-x-0 bottom-0 z-30 rounded-t-[28px] border-t border-surface-200/90 bg-white/98 shadow-modal backdrop-blur-xl transition-all duration-300 ease-out lg:hidden flex flex-col',
-            sheetMode === 'collapsed' && 'translate-y-[calc(100%-54px)]',
-            sheetMode === 'peek' && 'translate-y-0 max-h-[320px]',
-            sheetMode === 'expanded' && 'translate-y-0 max-h-[82%] h-[82%]'
+            'absolute inset-x-0 bottom-0 z-30 rounded-t-[28px] border-t border-surface-200/90 bg-white shadow-modal transition-all duration-300 ease-out lg:hidden flex flex-col overflow-hidden',
+            sheetMode === 'collapsed' && 'h-[56px]',
+            sheetMode === 'peek' && 'h-[360px] max-h-[58%]',
+            sheetMode === 'expanded' && 'h-[85%] max-h-[85%]'
           )}
         >
           {/* Header & Drag Handle (Click or Pull down to close, Pull up to expand) */}
@@ -266,7 +278,7 @@ export default function HistoryPage() {
               if (sheetMode === 'collapsed') setSheetMode('peek');
               else if (sheetMode === 'peek') setSheetMode('collapsed');
             }}
-            className="relative flex min-h-[54px] w-full items-center justify-between px-4 cursor-pointer select-none border-b border-surface-100/80 bg-white"
+            className="relative flex min-h-[56px] flex-shrink-0 w-full items-center justify-between px-4 cursor-pointer select-none border-b border-surface-100/80 bg-white"
           >
             {/* Grab handle indicator bar */}
             <div className="absolute left-1/2 top-2 -translate-x-1/2">
@@ -326,51 +338,53 @@ export default function HistoryPage() {
           </div>
 
           {/* Sheet Body (Stats & Events) */}
-          <div className="flex-1 overflow-hidden flex flex-col">
-            {/* 3 Core Stats Row */}
-            <div className="grid grid-cols-3 divide-x divide-surface-200 px-4 py-3 bg-surface-50/60 flex-shrink-0">
-              <div className="px-2 text-center">
-                <Navigation className="mx-auto h-5 w-5 text-primary-600" />
-                <p className="mt-1 text-xs text-surface-500">ระยะทางรวม</p>
-                <p className="font-extrabold text-surface-900">{statistics.totalDistanceKm} กม.</p>
+          {sheetMode !== 'collapsed' && (
+            <div className="min-h-0 flex-1 overflow-hidden flex flex-col bg-white">
+              {/* 3 Core Stats Row */}
+              <div className="grid grid-cols-3 divide-x divide-surface-200 px-4 py-3 bg-surface-50 flex-shrink-0">
+                <div className="px-2 text-center">
+                  <Navigation className="mx-auto h-5 w-5 text-primary-600" />
+                  <p className="mt-1 text-xs text-surface-500">ระยะทางรวม</p>
+                  <p className="font-extrabold text-surface-900">{statistics.totalDistanceKm} กม.</p>
+                </div>
+                <div className="px-2 text-center">
+                  <Clock3 className="mx-auto h-5 w-5 text-danger-600" />
+                  <p className="mt-1 text-xs text-surface-500">เวลาเดินทาง</p>
+                  <p className="font-extrabold text-surface-900">{statistics.durationMinutes} นาที</p>
+                </div>
+                <div className="px-2 text-center">
+                  <Battery className="mx-auto h-5 w-5 text-success-600" />
+                  <p className="mt-1 text-xs text-surface-500">ใช้แบตเตอรี่</p>
+                  <p className="font-extrabold text-surface-900">{statistics.batteryConsumedPercent}%</p>
+                </div>
               </div>
-              <div className="px-2 text-center">
-                <AlertTriangle className="mx-auto h-5 w-5 text-danger-600" />
-                <p className="mt-1 text-xs text-surface-500">ออกนอกเขต</p>
-                <p className="font-extrabold text-surface-900">{Math.min(statistics.durationMinutes, 18)} นาที</p>
-              </div>
-              <div className="px-2 text-center">
-                <Battery className="mx-auto h-5 w-5 text-success-600" />
-                <p className="mt-1 text-xs text-surface-500">ใช้แบตเตอรี่</p>
-                <p className="font-extrabold text-surface-900">{statistics.batteryConsumedPercent}%</p>
-              </div>
-            </div>
 
-            {/* Scrollable Events List */}
-            <div className="custom-scrollbar flex-1 overflow-y-auto border-t border-surface-100 px-5 py-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="font-extrabold text-surface-950">กิจกรรมสำคัญ</h2>
-                <span className="text-xs text-surface-400">{events.length} รายการ</span>
-              </div>
-              <div className="space-y-3 pb-6">
-                {events.slice(0, sheetMode === 'expanded' ? events.length : 2).map((event) => {
-                  const presentation = getEventPresentation(event);
-                  const EventIcon = presentation.Icon;
-                  const color = presentation.tone === 'danger' ? 'bg-danger-50 text-danger-600' : presentation.tone === 'success' ? 'bg-success-50 text-success-600' : 'bg-primary-50 text-primary-600';
-                  return (
-                    <article key={event.id} className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-surface-100 p-3 bg-white">
-                      <span className={`rounded-xl p-2 ${color}`}><EventIcon className="h-4 w-4" /></span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-extrabold text-surface-900">{presentation.label}</p>
-                        <p className="truncate text-xs text-surface-500">{event.note || `แบตเตอรี่ ${event.batteryLevel}%`}</p>
-                      </div>
-                      <time className="text-xs font-bold text-primary-600">{formatTime(event.timestamp)}</time>
-                    </article>
-                  );
-                })}
+              {/* Scrollable Events List (shows ALL events cleanly in both peek and expanded modes) */}
+              <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-surface-100 px-5 py-4 bg-white">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="font-extrabold text-surface-950">กิจกรรมสำคัญ</h2>
+                  <span className="text-xs font-semibold text-surface-500">{events.length} รายการ</span>
+                </div>
+                <div className="space-y-3 pb-8">
+                  {events.map((event) => {
+                    const presentation = getEventPresentation(event);
+                    const EventIcon = presentation.Icon;
+                    const color = presentation.tone === 'danger' ? 'bg-danger-50 text-danger-600' : presentation.tone === 'success' ? 'bg-success-50 text-success-600' : 'bg-primary-50 text-primary-600';
+                    return (
+                      <article key={event.id} className="flex min-h-[60px] items-center gap-3 rounded-2xl border border-surface-200/80 p-3 bg-surface-50/40">
+                        <span className={`rounded-xl p-2 flex-shrink-0 ${color}`}><EventIcon className="h-4 w-4" /></span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-extrabold text-surface-900">{presentation.label}</p>
+                          <p className="text-xs text-surface-500 leading-snug">{event.note || `แบตเตอรี่ ${event.batteryLevel}%`}</p>
+                        </div>
+                        <time className="text-xs font-bold text-primary-600 flex-shrink-0">{formatTime(event.timestamp)}</time>
+                      </article>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
     </div>

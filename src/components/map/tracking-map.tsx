@@ -1,40 +1,66 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { MapContainer } from './map-container';
 import { PetMarker } from './pet-marker';
 import { SafeZoneCircle } from './safe-zone-circle';
 import { Pet, SafeZone } from '@/types';
+import type { MapFocusCircle } from './leaflet-map-inner';
 
 export interface TrackingMapProps {
   pets: Pet[];
   safeZones?: SafeZone[];
   selectedPetId?: string;
   onSelectPet?: (petId: string) => void;
+  focusTrigger?: number;
+  focusCircle?: MapFocusCircle | null;
   className?: string;
 }
 
-export function TrackingMap({
+export const TrackingMap = React.memo(function TrackingMap({
   pets,
   safeZones = [],
   selectedPetId,
   onSelectPet,
+  focusTrigger,
+  focusCircle,
   className = 'h-[500px] w-full rounded-2xl overflow-hidden shadow-card border border-surface-200',
 }: TrackingMapProps) {
-  // Find selected pet or default to first pet with location
-  const activePet = pets.find((p) => p.id === selectedPetId) || pets[0];
-  const center: [number, number] = activePet?.latestLocation
-    ? [activePet.latestLocation.latitude, activePet.latestLocation.longitude]
-    : [13.7314, 100.5590];
+  const activePet = useMemo(
+    () => pets.find((p) => p.id === selectedPetId) || pets[0],
+    [pets, selectedPetId]
+  );
 
-  // Collect all safe zones from props or aggregated pets
-  const allZones = safeZones.length > 0 ? safeZones : pets.flatMap((p) => p.safeZones || []);
+  const petLat = activePet?.latestLocation?.latitude;
+  const petLng = activePet?.latestLocation?.longitude;
+
+  const center = useMemo<[number, number]>(
+    () =>
+      petLat !== undefined && petLng !== undefined
+        ? [petLat, petLng]
+        : [13.7314, 100.559],
+    [petLat, petLng]
+  );
+
+  const allZones = useMemo(
+    () => (safeZones.length > 0 ? safeZones : pets.flatMap((p) => p.safeZones || [])),
+    [safeZones, pets]
+  );
 
   return (
-    <MapContainer center={center} zoom={15} className={className}>
-      {/* Render Safe Zone Circles */}
+    <MapContainer
+      center={center}
+      zoom={15}
+      focusTrigger={focusTrigger}
+      focusCircle={focusCircle}
+      className={className}
+    >
+      {/* Render Safe Zone Circles (key includes radius & coords so Leaflet always repaints) */}
       {allZones.map((zone) => (
-        <SafeZoneCircle key={zone.id} zone={zone} />
+        <SafeZoneCircle
+          key={`${zone.id}-${zone.radius}-${zone.latitude}-${zone.longitude}-${zone.isActive}`}
+          zone={zone}
+        />
       ))}
 
       {/* Render Pet Live Markers */}
@@ -42,9 +68,9 @@ export function TrackingMap({
         <PetMarker
           key={pet.id}
           pet={pet}
-          onClick={() => onSelectPet && onSelectPet(pet.id)}
+          onSelectPet={onSelectPet}
         />
       ))}
     </MapContainer>
   );
-}
+});

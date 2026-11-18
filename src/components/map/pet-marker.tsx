@@ -10,9 +10,10 @@ import Link from 'next/link';
 export interface PetMarkerProps {
   pet: Pet;
   onClick?: () => void;
+  onSelectPet?: (petId: string) => void;
 }
 
-export const PetMarker = React.memo(function PetMarker({ pet, onClick }: PetMarkerProps) {
+export const PetMarker = React.memo(function PetMarker({ pet, onClick, onSelectPet }: PetMarkerProps) {
   const loc = pet.latestLocation;
   const isOnline = pet.device?.isOnline ?? true;
   const isLost = pet.isLost;
@@ -24,20 +25,20 @@ export const PetMarker = React.memo(function PetMarker({ pet, onClick }: PetMark
     ? '#10B981' // Green Online
     : '#94A3B8'; // Gray Offline
 
-  // Memoize custom HTML DivIcon to prevent recreation on every render
+  // Memoize custom HTML DivIcon — only animate radar ping during active SOS to save GPU/battery
   const customIcon = useMemo(
     () =>
       L.divIcon({
         className: 'custom-pet-marker',
         html: `
-          <div style="position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; transform: translateZ(0); will-change: transform;">
+          <div style="position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
             <div style="
               position: absolute;
               inset: 0;
               border-radius: 9999px;
               background-color: ${ringColor};
-              opacity: 0.35;
-              animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+              opacity: ${isLost ? '0.38' : '0.18'};
+              ${isLost ? 'animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;' : ''}
             "></div>
             <div style="
               position: relative;
@@ -47,15 +48,19 @@ export const PetMarker = React.memo(function PetMarker({ pet, onClick }: PetMark
               border: 3px solid ${ringColor};
               background-color: white;
               overflow: hidden;
-              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
+              box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16);
             ">
-              <img 
+              ${
+                pet.primaryPhotoUrl
+                  ? `<img 
                 src="${pet.primaryPhotoUrl}" 
                 alt="${pet.name}" 
                 loading="lazy"
                 decoding="async"
                 style="width: 100%; height: 100%; object-fit: cover;" 
-              />
+              />`
+                  : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; color: #193D4F; background: #EEF4F6;">${pet.name.charAt(0).toUpperCase()}</div>`
+              }
             </div>
             <div style="
               position: absolute;
@@ -81,24 +86,38 @@ export const PetMarker = React.memo(function PetMarker({ pet, onClick }: PetMark
     [pet.primaryPhotoUrl, pet.name, isLost, isOnline, ringColor]
   );
 
+  const eventHandlers = useMemo(
+    () => ({
+      click: () => {
+        onSelectPet?.(pet.id);
+        onClick?.();
+      },
+    }),
+    [onSelectPet, onClick, pet.id]
+  );
+
   if (!loc) return null;
 
   return (
     <Marker
       position={[loc.latitude, loc.longitude]}
       icon={customIcon}
-      eventHandlers={{
-        click: () => onClick && onClick(),
-      }}
+      eventHandlers={eventHandlers}
     >
       <Popup className="pet-map-popup">
         <div className="p-3 max-w-[240px] text-left">
           <div className="flex items-center gap-2.5 mb-2">
-            <img
-              src={pet.primaryPhotoUrl}
-              alt={pet.name}
-              className="w-10 h-10 rounded-full object-cover border border-surface-200"
-            />
+            {pet.primaryPhotoUrl ? (
+              <img
+                src={pet.primaryPhotoUrl}
+                alt={pet.name}
+                className="w-10 h-10 rounded-full object-cover border border-surface-200"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-primary-50 text-primary-700 font-bold text-sm flex items-center justify-center border border-surface-200">
+                {pet.name.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
               <h4 className="font-bold text-sm text-surface-900 leading-tight">
                 {pet.name}

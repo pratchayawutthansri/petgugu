@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,8 +26,22 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
+    };
+  }, []);
 
   const removeToast = useCallback((id: string) => {
+    const timer = timersRef.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timersRef.current.delete(id);
+    }
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
@@ -40,12 +54,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       setToasts((prev) => [...prev.slice(-2), newToast]);
 
       if (duration > 0) {
-        setTimeout(() => {
-          removeToast(id);
+        const timer = setTimeout(() => {
+          timersRef.current.delete(id);
+          setToasts((prev) => prev.filter((t) => t.id !== id));
         }, duration);
+        timersRef.current.set(id, timer);
       }
     },
-    [removeToast]
+    []
   );
 
   const success = useCallback(
@@ -65,8 +81,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [showToast]
   );
 
+  const contextValue = useMemo(
+    () => ({ showToast, success, error, warning, info }),
+    [showToast, success, error, warning, info]
+  );
+
   return (
-    <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
 
       {/* Toast Notification Container (Positioned Top-Left as requested) */}
@@ -82,10 +103,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               role="status"
               className={cn(
                 'pointer-events-auto flex items-start gap-3 p-3.5 sm:p-4 rounded-2xl shadow-modal border transition-all duration-200 animate-fade-in backdrop-blur-md',
-                toast.type === 'success' && 'bg-white/98 border-emerald-200 text-surface-900',
-                toast.type === 'error' && 'bg-white/98 border-rose-200 text-surface-900',
-                toast.type === 'warning' && 'bg-white/98 border-amber-200 text-surface-900',
-                toast.type === 'info' && 'bg-white/98 border-sky-200 text-surface-900'
+                toast.type === 'success' && 'bg-white border-emerald-200 text-surface-900',
+                toast.type === 'error' && 'bg-white border-rose-200 text-surface-900',
+                toast.type === 'warning' && 'bg-white border-amber-200 text-surface-900',
+                toast.type === 'info' && 'bg-white border-sky-200 text-surface-900'
               )}
             >
               {/* Icon */}

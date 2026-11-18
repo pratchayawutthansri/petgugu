@@ -15,7 +15,24 @@ if (typeof window !== 'undefined') {
   });
 }
 
-function ChangeView({ center, zoom }: { center: [number, number]; zoom: number }) {
+export interface MapFocusCircle {
+  latitude: number;
+  longitude: number;
+  radius: number;
+  trigger: number;
+}
+
+function ChangeView({
+  center,
+  zoom,
+  focusTrigger,
+  focusCircle,
+}: {
+  center: [number, number];
+  zoom: number;
+  focusTrigger?: number;
+  focusCircle?: MapFocusCircle | null;
+}) {
   const map = useMap();
   const [lat, lng] = center;
 
@@ -27,6 +44,23 @@ function ChangeView({ center, zoom }: { center: [number, number]; zoom: number }
     }
   }, [lat, lng, map]);
 
+  useEffect(() => {
+    if (!focusTrigger) return;
+    map.flyTo([lat, lng], zoom, { animate: true, duration: 0.5 });
+  }, [focusTrigger, lat, lng, zoom, map]);
+
+  useEffect(() => {
+    if (!focusCircle) return;
+    const bounds = L.latLng(focusCircle.latitude, focusCircle.longitude).toBounds(
+      Math.max(focusCircle.radius, 50) * 2.4
+    );
+    map.fitBounds(bounds, {
+      padding: [36, 36],
+      maxZoom: 17,
+      animate: true,
+    });
+  }, [focusCircle, map]);
+
   return null;
 }
 
@@ -34,10 +68,14 @@ export function LeafletMapInner({
   children,
   center,
   zoom,
+  focusTrigger,
+  focusCircle,
 }: {
   children?: React.ReactNode;
   center: [number, number];
   zoom: number;
+  focusTrigger?: number;
+  focusCircle?: MapFocusCircle | null;
 }) {
   return (
     <MapContainer
@@ -47,12 +85,17 @@ export function LeafletMapInner({
       preferCanvas={true}
       className="h-full w-full z-0"
     >
-      <ChangeView center={center} zoom={zoom} />
+      <ChangeView
+        center={center}
+        zoom={zoom}
+        focusTrigger={focusTrigger}
+        focusCircle={focusCircle}
+      />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         maxZoom={19}
-        keepBuffer={4}
+        keepBuffer={2}
         updateWhenZooming={false}
         updateWhenIdle={true}
       />

@@ -28,7 +28,19 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, species, breed, age, gender, weight, healthNotes, primaryPhotoUrl, photoUrls, deviceId } = body;
+    const {
+      name,
+      species,
+      breed,
+      age,
+      gender,
+      weight,
+      healthNotes,
+      primaryPhotoUrl,
+      photoUrls,
+      deviceId,
+      initialSafeZone,
+    } = body;
 
     if (!name || !breed) {
       return NextResponse.json(
@@ -49,6 +61,7 @@ export async function POST(request: Request) {
       primaryPhotoUrl: primaryPhotoUrl || photoUrls[0],
       photoUrls: photoUrls || [primaryPhotoUrl],
       deviceId,
+      initialSafeZone,
       batterySaver: false,
       proAlerts: true,
       isLost: false,

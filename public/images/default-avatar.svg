@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#EEF4F6"/>
+      <stop offset="100%" stop-color="#DCEADF"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="64" fill="url(#bg)"/>
+  <!-- Cute minimalist puppy ears -->
+  <ellipse cx="38" cy="54" rx="13" ry="22" transform="rotate(18 38 54)" fill="#C98A3F"/>
+  <ellipse cx="90" cy="54" rx="13" ry="22" transform="rotate(-18 90 54)" fill="#C98A3F"/>
+  <!-- Head -->
+  <circle cx="64" cy="64" r="30" fill="#F5D3A1"/>
+  <!-- Forehead soft patch -->
+  <ellipse cx="52" cy="52" rx="11" ry="9" fill="#E3B16E" opacity="0.55"/>
+  <!-- Eyes -->
+  <circle cx="53" cy="61" r="4" fill="#193D4F"/>
+  <circle cx="75" cy="61" r="4" fill="#193D4F"/>
+  <circle cx="54.3" cy="59.6" r="1.4" fill="#FFFFFF"/>
+  <circle cx="76.3" cy="59.6" r="1.4" fill="#FFFFFF"/>
+  <!-- Muzzle -->
+  <ellipse cx="64" cy="73" rx="13" ry="10" fill="#FFF8EE"/>
+  <!-- Nose -->
+  <ellipse cx="64" cy="69.5" rx="5.5" ry="3.8" fill="#193D4F"/>
+  <!-- Smile -->
+  <path d="M58.5 76C60 78.5 62.5 78.5 64 76.5C65.5 78.5 68 78.5 69.5 76" stroke="#193D4F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Rosy cheeks -->
+  <circle cx="45" cy="70" r="4" fill="#E88B7D" opacity="0.45"/>
+  <circle cx="83" cy="70" r="4" fill="#E88B7D" opacity="0.45"/>
+</svg>

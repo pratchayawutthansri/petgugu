@@ -12,7 +12,9 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, ConfirmDialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { TrackingMap } from '@/components/map/dynamic-tracking-map';
+import type { MapFocusCircle } from '@/components/map/leaflet-map-inner';
 import { EditPetDialog } from '@/components/pets/edit-pet-dialog';
+import { SafeZoneDialog } from '@/components/pets/safe-zone-dialog';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -84,9 +86,8 @@ export default function PetDetailsPage() {
   const [vacNextDue, setVacNextDue] = useState('');
   const [vacClinic, setVacClinic] = useState('');
   const [showZoneModal, setShowZoneModal] = useState(false);
-  const [isAddingZone, setIsAddingZone] = useState(false);
-  const [zoneName, setZoneName] = useState('');
-  const [zoneRadius, setZoneRadius] = useState(300);
+  const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
+  const [focusCircle, setFocusCircle] = useState<MapFocusCircle | null>(null);
 
   const pet = pets.find((item) => item.id === petId);
 
@@ -168,30 +169,9 @@ export default function PetDetailsPage() {
     }
   };
 
-  const handleAddZone = async () => {
-    if (!zoneName.trim()) {
-      showToast({ type: 'warning', message: 'กรุณากรอกชื่อพื้นที่ปลอดภัย' });
-      return;
-    }
-    if (zoneRadius < 50 || zoneRadius > 5000) {
-      showToast({ type: 'warning', message: 'รัศมีพื้นที่ต้องอยู่ระหว่าง 50–5,000 เมตร' });
-      return;
-    }
-    setIsAddingZone(true);
-    try {
-      const now = new Date().toISOString();
-      const response = await updatePet(pet.id, {
-        safeZones: [...(pet.safeZones || []), { id: `zone_${Date.now()}`, petId: pet.id, name: zoneName.trim(), latitude: pet.latestLocation?.latitude || 13.7314, longitude: pet.latestLocation?.longitude || 100.559, radius: Number(zoneRadius), isActive: true, createdAt: now, updatedAt: now }],
-      });
-      if (!response.success) {
-        showToast({ type: 'error', message: response.error || 'เพิ่มพื้นที่ไม่สำเร็จ กรุณาลองอีกครั้ง' });
-        return;
-      }
-      setShowZoneModal(false);
-      setZoneName('');
-    } finally {
-      setIsAddingZone(false);
-    }
+  const handleOpenZoneModal = (zoneId: string | null = null) => {
+    setEditingZoneId(zoneId);
+    setShowZoneModal(true);
   };
 
   const handleShareProfile = async () => {
@@ -323,7 +303,7 @@ export default function PetDetailsPage() {
           </dl>
 
           <div className="mt-auto grid gap-2 pt-7 sm:grid-cols-2">
-            <Link href="/dashboard" className="block"><Button size="lg" className="w-full" leftIcon={<Navigation className="h-5 w-5" aria-hidden="true" />}>ติดตาม {pet.name}</Button></Link>
+            <Link href={`/dashboard?pet=${encodeURIComponent(pet.id)}`} className="block"><Button size="lg" className="w-full" leftIcon={<Navigation className="h-5 w-5" aria-hidden="true" />}>ติดตาม {pet.name}</Button></Link>
             <Button size="lg" variant="outline" className="w-full" leftIcon={<Edit className="h-5 w-5" aria-hidden="true" />} onClick={handleOpenEdit}>แก้ไขโปรไฟล์</Button>
           </div>
         </Card>
@@ -384,10 +364,10 @@ export default function PetDetailsPage() {
 
         <aside className="min-w-0 space-y-6 xl:sticky xl:top-24">
           <Card className="overflow-hidden rounded-3xl">
-            <div className="flex items-center justify-between gap-3 p-5 pb-4"><div><p className="text-xs font-extrabold uppercase tracking-wider text-primary-600">Live geofence</p><h2 className="mt-1 font-extrabold text-surface-950">พื้นที่ปลอดภัย</h2><p className="text-xs text-surface-500">เปิดใช้งาน {safeZoneCount} พื้นที่</p></div><Button variant="ghost" size="sm" leftIcon={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setShowZoneModal(true)}>เพิ่ม</Button></div>
-            <div className="relative"><TrackingMap pets={[pet]} className="h-[280px] w-full rounded-none" /><div className="pointer-events-none absolute bottom-3 left-3 rounded-full border border-white/60 bg-white/90 px-3 py-1.5 text-xs font-bold text-surface-700 shadow-card backdrop-blur-md">ตำแหน่งล่าสุดของ {pet.name}</div></div>
+            <div className="flex items-center justify-between gap-3 p-5 pb-4"><div><p className="text-xs font-extrabold uppercase tracking-wider text-primary-600">Live geofence</p><h2 className="mt-1 font-extrabold text-surface-950">พื้นที่ปลอดภัย</h2><p className="text-xs text-surface-500">เปิดใช้งาน {safeZoneCount} พื้นที่</p></div><Button variant="ghost" size="sm" leftIcon={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => handleOpenZoneModal(null)}>จัดการ / เพิ่ม</Button></div>
+            <div className="relative"><TrackingMap pets={[pet]} focusCircle={focusCircle} className="h-[280px] w-full rounded-none" /><div className="pointer-events-none absolute bottom-3 left-3 rounded-full border border-white/60 bg-white/90 px-3 py-1.5 text-xs font-bold text-surface-700 shadow-card backdrop-blur-md">ตำแหน่งล่าสุดของ {pet.name}</div></div>
             <div className="divide-y divide-surface-100 p-4 pt-2">
-              {(pet.safeZones || []).slice(0, 3).map((zone) => <div key={zone.id} className="flex min-h-[64px] items-center gap-3 py-3"><span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${zone.isActive ? 'bg-success-50 text-success-700' : 'bg-surface-100 text-surface-500'}`}><ShieldCheck className="h-4 w-4" aria-hidden="true" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-surface-900" title={zone.name}>{zone.name}</p><p className="text-xs text-surface-500">รัศมี {zone.radius.toLocaleString()} เมตร</p></div><Badge variant={zone.isActive ? 'success' : 'surface'} size="sm">{zone.isActive ? 'Active' : 'Paused'}</Badge></div>)}
+              {(pet.safeZones || []).map((zone) => <button key={zone.id} type="button" onClick={() => handleOpenZoneModal(zone.id)} className="flex w-full min-h-[64px] items-center gap-3 py-3 text-left transition hover:bg-surface-50 rounded-xl px-1.5" title="คลิกเพื่อปรับรัศมีหรือแก้ไขพื้นที่"><span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${zone.isActive ? 'bg-success-50 text-success-700' : 'bg-surface-100 text-surface-500'}`}><ShieldCheck className="h-4 w-4" aria-hidden="true" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-surface-900" title={zone.name}>{zone.name}</p><p className="text-xs text-surface-500">รัศมี {zone.radius.toLocaleString()} เมตร · คลิกเพื่อแก้ไข</p></div><Badge variant={zone.isActive ? 'success' : 'surface'} size="sm">{zone.isActive ? 'Active' : 'Paused'}</Badge></button>)}
               {!pet.safeZones?.length && <p className="py-5 text-center text-sm text-surface-500">ยังไม่มีพื้นที่ปลอดภัย</p>}
             </div>
           </Card>
@@ -419,9 +399,21 @@ export default function PetDetailsPage() {
       )}
 
       {showZoneModal && (
-        <Dialog isOpen onClose={() => !isAddingZone && setShowZoneModal(false)} title="เพิ่มพื้นที่ปลอดภัย" description={`ใช้พิกัดล่าสุดของ ${pet.name} เป็นจุดศูนย์กลาง`} size="md">
-          <div className="space-y-4 pt-2"><Input label="ชื่อพื้นที่ *" value={zoneName} onChange={(event) => setZoneName(event.target.value)} /><Input label="รัศมี (เมตร) *" type="number" min={50} max={5000} value={zoneRadius} onChange={(event) => setZoneRadius(Number(event.target.value))} /><p className="rounded-xl bg-surface-50 px-3 py-2 text-xs leading-5 text-surface-500">ค่าที่แนะนำสำหรับบ้านคือ 100–300 เมตร และพื้นที่สาธารณะ 300–500 เมตร</p><div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><Button variant="outline" onClick={() => setShowZoneModal(false)} disabled={isAddingZone}>ยกเลิก</Button><Button onClick={handleAddZone} isLoading={isAddingZone}>บันทึกพื้นที่</Button></div></div>
-        </Dialog>
+        <SafeZoneDialog
+          isOpen={showZoneModal}
+          onClose={() => setShowZoneModal(false)}
+          pet={pet}
+          initialEditZoneId={editingZoneId}
+          onZoneSaved={(savedZone) => {
+            setFocusCircle({
+              latitude: savedZone.latitude,
+              longitude: savedZone.longitude,
+              radius: savedZone.radius,
+              trigger: Date.now(),
+            });
+          }}
+          onSave={updatePet}
+        />
       )}
 
       <ConfirmDialog isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} onConfirm={handleDelete} title={t('petDetails.deleteConfirmTitle')} description={t('petDetails.deleteConfirmDesc')} isLoading={isDeleting} />
