@@ -102,6 +102,7 @@ export interface LocationHistory {
   speed?: number; // km/h
   heading?: number; // 0 - 360 degrees
   accuracy?: number; // meters
+  address?: string; // e.g. "Sukhumvit 21, Bangkok"
   satellites?: number;
   hdop?: number;
   batteryVoltage?: number;
@@ -192,6 +193,7 @@ export interface Pet {
   age: number; // in years
   gender: Gender;
   weight: number; // in kg
+  coatColor?: string;
   healthNotes?: string;
   primaryPhotoUrl: string;
   photos: PetPhoto[];

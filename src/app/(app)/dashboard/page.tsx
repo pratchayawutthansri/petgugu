@@ -12,6 +12,7 @@ import {
   Battery,
   Bell,
   CheckCircle2,
+  ExternalLink,
   LocateFixed,
   MapPin,
   Plus,
@@ -88,8 +89,8 @@ export default function DashboardPage() {
     setSosPetId(null);
     showToast({
       type: 'error',
-      title: 'เปิดโหมดสัตว์เลี้ยงหาย (SOS) แล้ว',
-      message: `ระบบเพิ่มความถี่การส่งพิกัดของ ${targetPet?.name || 'สัตว์เลี้ยง'} เป็นแบบความแม่นยำสูงทันที`,
+      title: 'เปิดโหมดตามหาน้องแล้ว',
+      message: `ระบบเพิ่มความถี่การส่งพิกัดของ ${targetPet?.name || 'น้อง'} เพื่อช่วยค้นหาทันที`,
       duration: 6000,
     });
   };
@@ -127,9 +128,9 @@ export default function DashboardPage() {
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* ================= LEFT: EXPANSIVE LIVE MAP ================= */}
         <div className="lg:col-span-7 xl:col-span-8 bg-white rounded-3xl border border-neutral-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden relative flex flex-col min-h-[520px] lg:min-h-[620px]">
-          {/* Top Floating Map Badge */}
-          <div className="absolute top-4 left-4 z-20 pointer-events-none">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-neutral-200/80 shadow-xs text-xs font-semibold text-neutral-800">
+          {/* Top Floating Map Badge (Positioned Top-Right so it doesn't overlap Leaflet Zoom controls) */}
+          <div className="absolute top-4 right-4 z-20 pointer-events-none">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-neutral-200/80 shadow-xs text-xs font-semibold text-neutral-800">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -238,7 +239,7 @@ export default function DashboardPage() {
                 {activePet.isLost ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-200">
                     <AlertTriangle className="w-3.5 h-3.5" />
-                    โหมดฉุกเฉิน (SOS)
+                    กำลังค้นหา / โหมดฉุกเฉิน
                   </span>
                 ) : (activePet.safeZones?.length || 0) > 0 ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
@@ -346,15 +347,37 @@ export default function DashboardPage() {
               {activePet?.isLost ? (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>ปิดโหมดฉุกเฉิน (พบสัตว์เลี้ยงแล้ว)</span>
+                  <span>ยกเลิกโหมดฉุกเฉิน (พบตัวน้องแล้ว)</span>
                 </>
               ) : (
                 <>
                   <AlertTriangle className="w-4 h-4" />
-                  <span>แจ้งสัตว์เลี้ยงหาย (SOS)</span>
+                  <span>แจ้งสัตว์เลี้ยงหาย / ส่งสัญญาณฉุกเฉิน</span>
                 </>
               )}
             </button>
+
+            {/* When SOS is active, show quick link to public QR page */}
+            {activePet?.isLost && (
+              <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-left space-y-1">
+                <p className="text-[11px] font-bold text-red-800 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                  <span>โหมดฉุกเฉินกำลังทำงาน</span>
+                </p>
+                <p className="text-[10px] text-red-700">
+                  หน้าป้ายชื่อที่คนสแกนจะขึ้นประกาศตามหาด่วนทันที
+                </p>
+                <a
+                  href={`/p/${activePet.qrCodeId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700 hover:text-red-900 underline pt-0.5"
+                >
+                  <span>กดดูหน้าป้ายชื่อที่คนสแกนเห็น</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            )}
 
             {/* View History Link */}
             <div className="pt-2 text-center">
@@ -375,9 +398,9 @@ export default function DashboardPage() {
         isOpen={!!sosPetId}
         onClose={() => setSosPetId(null)}
         onConfirm={handleConfirmSos}
-        title="ยืนยันการแจ้งสัตว์เลี้ยงหาย (SOS)"
-        description={`คุณต้องการเปิดสถานะฉุกเฉินสำหรับ ${activePet?.name || 'สัตว์เลี้ยง'} หรือไม่? ระบบจะปรับความถี่การส่งสัญญาณ GPS สูงสุดเพื่อช่วยค้นหา`}
-        confirmLabel="เปิดโหมด SOS ทันที"
+        title="ยืนยันการเปิดโหมดตามหาสัตว์เลี้ยง"
+        description={`คุณต้องการเปิดสถานะฉุกเฉินสำหรับ ${activePet?.name || 'น้องหมา'} หรือไม่? ระบบจะส่งพิกัดดาวเทียมแบบต่อเนื่องเพื่อช่วยค้นหา`}
+        confirmLabel="เปิดโหมดฉุกเฉินทันที"
         cancelLabel="ยกเลิก"
         variant="danger"
       />

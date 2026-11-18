@@ -138,22 +138,64 @@ System:
 
 ## ⚡ วิธีการติดตั้งและเปิดใช้งาน (Quick Start)
 
-### 1. ติดตั้ง Dependencies
+### 1. รันโหมด Development (Node.js)
 ```powershell
 cd d:\Petgugu\petgugu
 npm install
-```
-
-### 2. รันโหมด Development
-```powershell
 npm run dev
 ```
-เปิดเบราว์เซอร์ไปที่: **`http://localhost:3000`** (หรือ `http://localhost:3001` หากพอร์ต 3000 ถูกใช้งานอยู่)
+เปิดเบราว์เซอร์ไปที่: **`http://localhost:3000`**
+
+### 2. รันโหมด Production ด้วย Docker 🐳
+โปรเจกต์รองรับการ Deploy ผ่าน Docker ด้วย Next.js Standalone Image ขนาดกะทัดรัด (เพียง **54.9 MB**):
+
+```powershell
+# รันเฉพาะแอปพลิเคชันเดี่ยวผ่าน Docker CLI
+docker run -d -p 3000:3000 --name pawsandco-app pawsandco:latest
+
+# หรือรันทั้งระบบพร้อมฐานข้อมูล PostgreSQL ผ่าน Docker Compose
+cd d:\Petgugu\petgugu
+docker compose up -d
+```
 
 ### 3. บัญชีทดสอบสำหรับ Demo Mode
 - 🐶 **ผู้ใช้งานทั่วไป (Pet Owner)**: `demo@pawsandco.com` | รหัสผ่าน: `demo1234`
 - 🛡️ **ผู้ดูแลระบบ (Admin)**: `admin@pawsandco.com` | รหัสผ่าน: `admin1234`
 *(สามารถคลิกการ์ด Quick Demo บนหน้า Login เพื่อเข้าสู่ระบบได้ทันทีโดยไม่ต้องพิมพ์)*
+
+---
+
+## 📅 บันทึกความคืบหน้าและการพัฒนาล่าสุด (Updates — 18 พฤศจิกายน 2569)
+
+ในรอบการพัฒนานี้ ได้ดำเนินการปรับปรุงและพัฒนาครอบคลุมทั้ง 4 ด้านหลักเพื่อเตรียมความพร้อมสำหรับโปรเจกต์จบ:
+
+### 1. 🐳 Docker Packaging & Containerization
+- **Next.js Standalone Mode**: ปรับแต่ง `next.config.mjs` เปิดใช้งาน `output: 'standalone'` เพื่อลดขนาด Dependencies ให้เหลือเฉพาะไฟล์ที่รันจริง
+- **Production-grade Dockerfile**: สร้าง Multi-stage Dockerfile บนพื้นฐาน `node:20-alpine` พร้อมสิทธิ์ความปลอดภัย unprivileged user (`nextjs:nodejs`)
+- **Ultra-lightweight Image**: คอมไพล์ได้ Image ขนาดบีบอัดเพียง **54.9 MB** (Disk usage 229 MB) บูตพร้อมให้บริการใน 108ms
+- **Docker Images Generated**: บิลด์และแท็กสำเร็จเป็น `pawsandco:latest` และ `petgugu:latest` บน Docker Desktop
+- **Docker Compose Orchestration**: ตั้งค่า `docker-compose.yml` รองรับการรันร่วมกับ PostgreSQL 16 Alpine Database พร้อม Healthcheck
+
+### 2. 🎨 UI/UX Redesign & Human-centered Polish
+- **Layout & Collision Fixes**: ปรับปรุงตำแหน่ง Floating Badges และ Toast Notifications ให้อยู่มุมซ้ายบนอย่างเป็นระเบียบ ไม่ทับซ้อนกับปุ่มควบคุมแผนที่และสถานะสด
+- **Natural Tone of Voice**: ปรับลดคำที่ดูเป็น AI หรือประดิษฐ์เกินไป ให้เป็นภาษาไทยที่กระชับ อบอุ่น และเป็นธรรมชาติสำหรับเจ้าของสัตว์เลี้ยง
+- **Public QR Pet Profile (`/p/[qrId]`)**:
+  - ปรับดีไซน์หน้าสแกนปลอกคอดิจิทัลให้มุ่งเน้นการติดต่อเจ้าของทันที (1-Tap Call)
+  - นำป้ายแท็ก `Tag ID` ออกตามคำขอ เพื่อให้หน้าจอคลีน สบายตา ไม่เกะกะสายตา
+  - รองรับโหมดฉุกเฉินสุนัขพลัดหลง (SOS Lost Pet Mode) แสดงแถบเตือนสีแดงเด่นชัดและปุ่มโทรฉุกเฉิน
+
+### 3. 📡 การทดสอบความพร้อมฝั่งฮาร์ดแวร์ IoT (Hardware Readiness)
+- **REST Telemetry API Verification**: รัน Smoke Test (`scripts/iot-smoke-test.mjs`) ผ่านฉลุย 100% ครอบคลุม:
+  - `POST /api/iot/location` — รับพิกัด GNSS พร้อมคำนวณ Safe Zone แบบ Real-time
+  - `POST /api/iot/heartbeat` — บันทึกสถานะบอร์ด แบตเตอรี่ และสัญญาณแม้ยังไม่มีสัญญาณดาวเทียม
+  - `GET /api/iot/config` — ซิงก์รอบเวลาส่งพิกัดและพารามิเตอร์ของโซนปลอดภัย
+- **Device Authentication**: ระบบรักษาความปลอดภัยระดับฮาร์ดแวร์ด้วย Header `X-Device-Key` ประจำแต่ละบอร์ด และระบบ Idempotency ตรวจจับพิกัดซ้ำด้วย `messageId`
+- **Firmware Inspection**: ตรวจสอบโค้ดเฟิร์มแวร์ทดสอบพิกัด GNSS บนบอร์ด `LILYGO T-SIM7080G-S3 ESP32-S3` ([PetguguGPS.ino](firmware/PetguguGPS/PetguguGPS.ino))
+
+### 4. 🧠 สถาปัตยกรรมโปรเจกต์จบ (Capstone Architecture & Research)
+- **การวิจัย UI/UX แผนที่ GPS ระดับสากล**: วิเคราะห์ข้อดีจากแพลตฟอร์มชั้นนำอย่าง **Tractive Web (`my.tractive.com`)**, **Apple Find My**, **Traccar**, และ **Life360**
+- **Core Design Strategy**: ผสาน **Apple Find My (ความเรียบง่าย สบายตา บอกสถานที่ด้วยชื่อคุ้นเคย)** ร่วมกับ **Tractive (ความลึกของข้อมูล Telemetry และการแจ้งเตือน Safe Zone)**
+- **Offline Store-and-Forward Logging**: ออกแบบแนวทางการเก็บ Log สำรองบนบอร์ด (LittleFS ใน Flash 16MB หรือ MicroSD Card) เมื่อหลุดจากสัญญาณ 4G/NB-IoT เพื่อให้ประวัติเส้นทาง (Location History) ต่อเนื่องไม่สูญหาย และเป็นจุดเด่นทางวิศวกรรมสำหรับนำเสนอ
 
 ---
 

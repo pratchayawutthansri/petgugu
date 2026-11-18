@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Polyline, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { MapContainer } from './map-container';
@@ -14,6 +14,29 @@ export interface HistoryMapProps {
   safeZones?: SafeZone[];
   className?: string;
 }
+
+// Static memoized markers for start and end
+const startIcon = L.divIcon({
+  className: 'custom-start-marker',
+  html: `
+    <div style="background-color: #10B981; color: white; border-radius: 9999px; padding: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); border: 2px solid white; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; font-size: 11px; font-weight: bold; transform: translateZ(0);">
+      S
+    </div>
+  `,
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+});
+
+const endIcon = L.divIcon({
+  className: 'custom-end-marker',
+  html: `
+    <div style="background-color: #4F46E5; color: white; border-radius: 9999px; padding: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); border: 2px solid white; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; font-size: 11px; font-weight: bold; transform: translateZ(0);">
+      E
+    </div>
+  `,
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+});
 
 function FitRouteBounds({ positions }: { positions: [number, number][] }) {
   const map = useMap();
@@ -31,6 +54,11 @@ export function HistoryMap({
   safeZones = [],
   className = 'h-[500px] w-full rounded-2xl overflow-hidden shadow-card border border-surface-200',
 }: HistoryMapProps) {
+  const positions: [number, number][] = useMemo(
+    () => locations.map((l) => [l.latitude, l.longitude]),
+    [locations]
+  );
+
   if (locations.length === 0) {
     return (
       <div className={`${className} bg-surface-100 flex items-center justify-center text-surface-400`}>
@@ -39,34 +67,9 @@ export function HistoryMap({
     );
   }
 
-  const positions: [number, number][] = locations.map((l) => [l.latitude, l.longitude]);
   const startPoint = locations[0];
   const endPoint = locations[locations.length - 1];
   const center: [number, number] = [endPoint.latitude, endPoint.longitude];
-
-  // Custom Start Icon (Green)
-  const startIcon = L.divIcon({
-    className: 'custom-start-marker',
-    html: `
-      <div style="background-color: #10B981; color: white; border-radius: 9999px; padding: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); border: 2px solid white; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; font-size: 11px; font-weight: bold;">
-        S
-      </div>
-    `,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-  });
-
-  // Custom End Icon (Red / Primary)
-  const endIcon = L.divIcon({
-    className: 'custom-end-marker',
-    html: `
-      <div style="background-color: #4F46E5; color: white; border-radius: 9999px; padding: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); border: 2px solid white; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; font-size: 11px; font-weight: bold;">
-        E
-      </div>
-    `,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-  });
 
   return (
     <MapContainer center={center} zoom={15} className={className}>

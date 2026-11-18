@@ -17,7 +17,16 @@ export function useLocations(petId: string, from?: string, to?: string) {
     try {
       const res = await api.getPetHistory(petId, from, to);
       if (res.success && res.data) {
-        setLocations(res.data);
+        const incomingLocations = res.data;
+        setLocations((prev) => {
+          if (
+            prev.length === incomingLocations.length &&
+            prev[prev.length - 1]?.id === incomingLocations[incomingLocations.length - 1]?.id
+          ) {
+            return prev;
+          }
+          return incomingLocations;
+        });
       } else {
         setError(res.error || 'Failed to load telemetry');
       }
@@ -30,11 +39,24 @@ export function useLocations(petId: string, from?: string, to?: string) {
 
   useEffect(() => {
     fetchLocations();
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        void fetchLocations({ silent: true });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     const pollingId = window.setInterval(() => {
-      void fetchLocations({ silent: true });
+      if (!document.hidden) {
+        void fetchLocations({ silent: true });
+      }
     }, 15_000);
 
-    return () => window.clearInterval(pollingId);
+    return () => {
+      window.clearInterval(pollingId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchLocations]);
 
   // Compute Route Statistics

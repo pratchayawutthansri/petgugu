@@ -4,7 +4,7 @@ export const DEMO_SAFE_ZONES: SafeZone[] = [
   {
     id: 'zone_mochi_home',
     petId: 'pet_mochi_01',
-    name: 'บ้าน (Home - Sukhumvit)',
+    name: 'บ้าน (สุขุมวิท)',
     latitude: 13.7465,
     longitude: 100.5530,
     radius: 300, // 300 meters
@@ -15,7 +15,7 @@ export const DEMO_SAFE_ZONES: SafeZone[] = [
   {
     id: 'zone_mochi_park',
     petId: 'pet_mochi_01',
-    name: 'สวนเบญจกิติ (Benjakitti Park)',
+    name: 'สวนเบญจกิติ',
     latitude: 13.7314,
     longitude: 100.5590,
     radius: 450, // 450 meters
@@ -26,7 +26,7 @@ export const DEMO_SAFE_ZONES: SafeZone[] = [
   {
     id: 'zone_lucky_home',
     petId: 'pet_lucky_02',
-    name: 'บ้านสวน (Garden Residence - Ari)',
+    name: 'บ้านสวน (อารีย์)',
     latitude: 13.7820,
     longitude: 100.5440,
     radius: 250,

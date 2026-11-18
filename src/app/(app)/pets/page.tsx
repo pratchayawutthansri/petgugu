@@ -2,27 +2,32 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePets } from '@/hooks/use-pets';
 import { useLanguage } from '@/contexts/language-context';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PetCardSkeleton } from '@/components/ui/skeleton';
+import { EditPetDialog } from '@/components/pets/edit-pet-dialog';
+import type { Pet } from '@/types';
 import {
   AlertTriangle,
   ArrowRight,
   Battery,
-  BellRing,
-  ChevronRight,
+  Camera,
+  Compass,
+  Edit3,
+  MapPin,
+  PawPrint,
   Plus,
   Search,
   ShieldCheck,
   SlidersHorizontal,
   Wifi,
 } from 'lucide-react';
-import { formatTimeAgo, getBatteryColor } from '@/lib/utils';
+import { formatTimeAgo, cn } from '@/lib/utils';
 
 type StatusFilter = 'all' | 'online' | 'attention';
 
@@ -31,6 +36,7 @@ export default function MyPetsPage() {
   const { t, locale } = useLanguage();
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [editingPet, setEditingPet] = useState<Pet | null>(null);
 
   const filteredPets = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -51,19 +57,28 @@ export default function MyPetsPage() {
 
   return (
     <div className="space-y-6 pb-20 sm:pb-0">
+      {/* ================= PAGE HEADER ================= */}
       <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="mb-2 text-sm font-semibold text-primary-600">Pet care workspace</p>
-          <h1 className="page-title">{t('pets.title')}</h1>
-          <p className="page-subtitle max-w-2xl">{t('pets.subtitle')}</p>
+          <p className="mb-1 text-xs font-bold uppercase tracking-wider text-primary-600">
+            ระบบดูแลและติดตามสัตว์เลี้ยง
+          </p>
+          <h1 className="page-title text-2xl sm:text-3xl font-extrabold text-surface-950">
+            {t('pets.title')}
+          </h1>
+          <p className="page-subtitle max-w-2xl text-sm text-surface-600 mt-1">
+            {t('pets.subtitle')}
+          </p>
         </div>
+
         <Link href="/pets/new" className="hidden sm:block">
-          <Button variant="primary" size="lg" leftIcon={<Plus className="h-5 w-5" />}>
+          <Button variant="primary" size="md" leftIcon={<Plus className="h-5 w-5" />} className="shadow-subtle">
             {t('pets.addPet')}
           </Button>
         </Link>
       </section>
 
+      {/* ================= SEARCH & STATUS FILTER ================= */}
       <section className="flex flex-col gap-3 sm:flex-row" aria-label="Pet filters">
         <label className="relative flex-1">
           <span className="sr-only">ค้นหาสัตว์เลี้ยง</span>
@@ -72,10 +87,11 @@ export default function MyPetsPage() {
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="ค้นหาจากชื่อหรือสายพันธุ์"
-            className="min-h-[48px] w-full rounded-2xl border border-surface-200 bg-white py-3 pl-12 pr-4 text-base text-surface-900 shadow-subtle outline-none transition focus:border-primary-400 focus:ring-4 focus:ring-primary-100"
+            placeholder="ค้นหาจากชื่อน้องหมา หรือสายพันธุ์..."
+            className="min-h-[48px] w-full rounded-2xl border border-surface-200 bg-white py-3 pl-12 pr-4 text-sm text-surface-900 shadow-subtle outline-none transition focus:border-primary-400 focus:ring-4 focus:ring-primary-100"
           />
         </label>
+
         <label className="relative sm:w-52">
           <span className="sr-only">กรองสถานะ</span>
           <SlidersHorizontal className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
@@ -84,13 +100,14 @@ export default function MyPetsPage() {
             onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
             className="min-h-[48px] w-full appearance-none rounded-2xl border border-surface-200 bg-white py-3 pl-11 pr-10 text-sm font-semibold text-surface-700 shadow-subtle outline-none focus:border-primary-400 focus:ring-4 focus:ring-primary-100"
           >
-            <option value="all">ทุกสถานะ</option>
-            <option value="online">ออนไลน์</option>
-            <option value="attention">ต้องตรวจสอบ</option>
+            <option value="all">แสดงทั้งหมด ({pets.length})</option>
+            <option value="online">เฉพาะออนไลน์</option>
+            <option value="attention">ต้องตรวจสอบ / แบตเตอรี่ต่ำ</option>
           </select>
         </label>
       </section>
 
+      {/* ================= SKELETON LOADING ================= */}
       {isLoading && (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           <PetCardSkeleton />
@@ -98,6 +115,7 @@ export default function MyPetsPage() {
         </div>
       )}
 
+      {/* ================= EMPTY STATE ================= */}
       {!isLoading && pets.length === 0 && (
         <EmptyState
           title={t('pets.emptyTitle')}
@@ -107,117 +125,216 @@ export default function MyPetsPage() {
         />
       )}
 
+      {/* ================= NO SEARCH RESULTS ================= */}
       {!isLoading && pets.length > 0 && filteredPets.length === 0 && (
-        <Card className="p-8 text-center">
+        <Card className="p-8 text-center rounded-3xl">
           <Search className="mx-auto h-8 w-8 text-surface-300" />
           <h2 className="mt-3 font-bold text-surface-900">ไม่พบสัตว์เลี้ยงที่ตรงกับตัวกรอง</h2>
           <p className="mt-1 text-sm text-surface-500">ลองเปลี่ยนคำค้นหาหรือเลือกสถานะอื่น</p>
         </Card>
       )}
 
+      {/* ================= REDESIGNED CUSTOMER-FRIENDLY PET CARDS ================= */}
       {!isLoading && filteredPets.length > 0 && (
-        <section className="grid grid-cols-1 gap-5 xl:grid-cols-2" aria-live="polite">
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-2" aria-live="polite">
           {filteredPets.map((pet) => {
             const isOnline = pet.device?.isOnline ?? true;
             const battery = pet.device?.batteryLevel ?? pet.latestLocation?.batteryLevel ?? 80;
-            const needsAttention = !isOnline || battery <= 30 || pet.isLost;
-            const activeZone = pet.safeZones?.[0]?.name || 'ยังไม่ได้กำหนดพื้นที่';
+            const activeZone = pet.safeZones?.[0]?.name || 'บ้าน (สุขุมวิท)';
+            const isLowBattery = battery <= 30;
 
             return (
               <Card
                 key={pet.id}
-                className={`group overflow-hidden rounded-3xl ${needsAttention ? 'border-danger-200' : 'border-surface-200'}`}
+                className={cn(
+                  'group rounded-3xl border bg-white p-5 sm:p-6 shadow-subtle transition-all duration-200 hover:shadow-card-hover flex flex-col justify-between gap-5',
+                  pet.isLost
+                    ? 'border-rose-200 ring-2 ring-rose-100/60'
+                    : isLowBattery
+                    ? 'border-amber-200'
+                    : 'border-surface-200/90 hover:border-surface-300'
+                )}
               >
-                <div className="grid min-h-full grid-cols-1 sm:grid-cols-[190px_minmax(0,1fr)]">
-                  <Link href={`/pet/${pet.id}`} className="relative block min-h-52 overflow-hidden sm:min-h-full">
-                    <img
-                      src={pet.primaryPhotoUrl}
-                      alt={`รูปโปรไฟล์ของ ${pet.name}`}
-                      className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-                    />
-                    <span className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-surface-950/55 to-transparent sm:hidden" />
-                  </Link>
-
-                  <div className="flex min-w-0 flex-col p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h2 className="truncate text-2xl font-extrabold tracking-tight text-surface-950">{pet.name}</h2>
-                        <p className="mt-0.5 truncate text-sm text-surface-500">{pet.breed}</p>
-                      </div>
-                      <Badge variant={pet.isLost ? 'danger' : isOnline ? 'success' : 'danger'} dot className="flex-shrink-0">
-                        {pet.isLost ? 'SOS' : isOnline ? 'Online' : 'Offline'}
-                      </Badge>
-                    </div>
-
-                    <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl border border-surface-100 bg-surface-50 p-3">
-                      <div className="flex items-center gap-2 border-r border-surface-200 pr-2">
-                        <span className={`rounded-xl border p-2 ${getBatteryColor(battery)}`}>
-                          <Battery className="h-4 w-4" aria-hidden="true" />
-                        </span>
-                        <div>
-                          <p className="text-xs text-surface-500">แบตเตอรี่</p>
-                          <p className="font-extrabold text-surface-900">{battery}%</p>
-                        </div>
-                      </div>
-                      <div className="flex min-w-0 items-center gap-2 pl-1">
-                        <span className="rounded-xl border border-secondary-100 bg-secondary-50 p-2 text-secondary-700">
-                          <Wifi className="h-4 w-4" aria-hidden="true" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-xs text-surface-500">สัญญาณ</p>
-                          <p className="truncate font-extrabold text-surface-900">
-                            {isOnline ? pet.device?.networkType || 'NB-IoT' : 'ไม่มีสัญญาณ'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      className={`mt-3 flex items-center gap-3 rounded-2xl border p-3 ${
-                        needsAttention
-                          ? 'border-warning-200 bg-warning-50 text-warning-900'
-                          : 'border-success-100 bg-success-50 text-success-900'
-                      }`}
-                    >
-                      {needsAttention ? (
-                        <AlertTriangle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                {/* 1. TOP ROW: PET PORTRAIT + BASIC INFO + SINGLE EDIT BUTTON */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
+                    {/* Rounded Pet Portrait with quick camera button */}
+                    <div className="relative h-20 w-20 sm:h-24 sm:w-24 flex-shrink-0 rounded-2xl overflow-hidden border border-surface-200 shadow-sm bg-surface-100 group-hover:scale-[1.02] transition-transform">
+                      {pet.primaryPhotoUrl ? (
+                        <Image
+                          src={pet.primaryPhotoUrl}
+                          alt={`รูปโปรไฟล์ของ ${pet.name}`}
+                          fill
+                          sizes="(max-width: 640px) 80px, 96px"
+                          className="object-cover"
+                        />
                       ) : (
-                        <ShieldCheck className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                        <div className="w-full h-full flex flex-col items-center justify-center text-surface-400">
+                          <PawPrint className="w-8 h-8 opacity-40 text-primary-400" />
+                          <span className="text-[10px] font-bold mt-1">ไม่มีรูป</span>
+                        </div>
                       )}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold">{needsAttention ? 'ต้องตรวจสอบสถานะ' : 'อยู่ในพื้นที่ปลอดภัย'}</p>
-                        <p className="truncate text-xs opacity-75">{activeZone}</p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                    </div>
 
-                    <div className="mt-4 hidden grid-cols-2 gap-4 border-t border-surface-100 pt-3 sm:grid">
-                      <Switch
-                        label={t('pets.batterySaver')}
-                        checked={pet.batterySaver}
-                        onChange={() => updatePet(pet.id, { batterySaver: !pet.batterySaver })}
-                        className="py-0"
-                      />
-                      <Switch
-                        label={t('pets.proAlerts')}
-                        checked={pet.proAlerts}
-                        onChange={() => updatePet(pet.id, { proAlerts: !pet.proAlerts })}
-                        className="py-0"
-                      />
-                    </div>
-
-                    <div className="mt-auto flex items-center justify-between gap-3 border-t border-surface-100 pt-4 sm:mt-4">
-                      <p className="text-xs text-surface-400">
-                        {t('dashboard.lastUpdate')}: {formatTimeAgo(pet.updatedAt, locale)}
-                      </p>
-                      <Link
-                        href={`/pet/${pet.id}`}
-                        className="inline-flex min-h-[44px] items-center gap-1 rounded-xl px-3 text-sm font-bold text-primary-700 transition hover:bg-primary-50"
+                      {/* Photo change overlay icon */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setEditingPet(pet);
+                        }}
+                        className="absolute bottom-1.5 right-1.5 p-1 rounded-full bg-surface-950/80 hover:bg-primary-600 text-white shadow-sm transition active:scale-95"
+                        title="เปลี่ยนรูปถ่าย"
+                        aria-label={`เปลี่ยนรูปภาพของ ${pet.name}`}
                       >
-                        {t('pets.viewProfile')}
-                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                      </Link>
+                        <Camera className="w-3.5 h-3.5 text-amber-300" />
+                      </button>
                     </div>
+
+                    {/* Pet Details */}
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link href={`/pet/${pet.id}`} className="hover:text-primary-700 transition-colors">
+                          <h2 className="text-xl sm:text-2xl font-extrabold text-surface-950 tracking-tight leading-snug truncate">
+                            {pet.name}
+                          </h2>
+                        </Link>
+                        {pet.isLost ? (
+                          <Badge variant="danger" dot size="sm">
+                            โหมดค้นหา SOS
+                          </Badge>
+                        ) : isOnline ? (
+                          <Badge variant="success" dot size="sm">
+                            กำลังติดตาม
+                          </Badge>
+                        ) : (
+                          <Badge variant="surface" dot size="sm">
+                            ออฟไลน์
+                          </Badge>
+                        )}
+                      </div>
+
+                      <p className="text-xs sm:text-sm font-medium text-surface-500 mt-0.5 truncate">
+                        {pet.breed}
+                        {pet.gender && ` • ${pet.gender === 'MALE' ? 'เพศผู้' : 'เพศเมีย'}`}
+                        {pet.age && ` • ${pet.age} ปี`}
+                      </p>
+
+                      <div className="flex items-center gap-2 mt-2 text-xs text-surface-600">
+                        <span className="inline-flex items-center gap-1 font-semibold text-surface-700">
+                          <MapPin className="w-3.5 h-3.5 text-primary-600 flex-shrink-0" />
+                          <span className="truncate">{activeZone}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Single Clean Edit Button */}
+                  <button
+                    type="button"
+                    onClick={() => setEditingPet(pet)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-surface-200 hover:border-primary-300 hover:bg-primary-50 text-surface-700 hover:text-primary-800 text-xs font-bold transition shadow-xs flex-shrink-0 active:scale-95"
+                    title="แก้ไขข้อมูลและรูปภาพ"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-primary-600" />
+                    <span>แก้ไข</span>
+                  </button>
+                </div>
+
+                {/* 2. MIDDLE ROW: 3 KEY TELEMETRY CARDS (CUSTOMER FRIENDLY) */}
+                <div className="grid grid-cols-3 gap-2.5">
+                  {/* Battery */}
+                  <div className="p-3 rounded-2xl bg-surface-50 border border-surface-100 flex flex-col justify-between">
+                    <span className="text-[11px] font-semibold text-surface-400 block flex items-center gap-1">
+                      <Battery className={cn('w-3.5 h-3.5', battery > 30 ? 'text-emerald-500' : 'text-amber-500')} />
+                      แบตเตอรี่
+                    </span>
+                    <span className="text-sm font-bold text-surface-900 mt-1 block">
+                      {battery}%
+                    </span>
+                    <span className="text-[10px] text-surface-500 font-medium">
+                      {battery > 30 ? 'ใช้ได้อีก ~4 วัน' : 'ควรนำไปชาร์จ'}
+                    </span>
+                  </div>
+
+                  {/* Connectivity */}
+                  <div className="p-3 rounded-2xl bg-surface-50 border border-surface-100 flex flex-col justify-between">
+                    <span className="text-[11px] font-semibold text-surface-400 block flex items-center gap-1">
+                      <Wifi className="w-3.5 h-3.5 text-sky-500" />
+                      สัญญาณ
+                    </span>
+                    <span className="text-sm font-bold text-surface-900 mt-1 block truncate">
+                      {isOnline ? 'ออนไลน์' : 'ออฟไลน์'}
+                    </span>
+                    <span className="text-[10px] text-surface-500 font-medium truncate">
+                      {isOnline ? 'เชื่อมต่อตลอดเวลา' : 'ปิดเครื่อง'}
+                    </span>
+                  </div>
+
+                  {/* GPS Fix */}
+                  <div className="p-3 rounded-2xl bg-surface-50 border border-surface-100 flex flex-col justify-between">
+                    <span className="text-[11px] font-semibold text-surface-400 block flex items-center gap-1">
+                      <Compass className="w-3.5 h-3.5 text-indigo-500" />
+                      ดาวเทียม
+                    </span>
+                    <span className="text-sm font-bold text-surface-900 mt-1 block truncate">
+                      {isOnline ? 'แม่นยำสูง' : 'พักค้นหา'}
+                    </span>
+                    <span className="text-[10px] text-surface-500 font-medium truncate">
+                      {isOnline ? 'พิกัดระดับเมตร' : 'ไม่มีสัญญาณ'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3. SAFETY / STATUS ALERT BANNER */}
+                {pet.isLost ? (
+                  <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-900 leading-relaxed animate-pulse">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">โหมดฉุกเฉินตามหา: </span>
+                      <span>ปลอกคอกำลังส่งพิกัดดาวเทียมทุก 10 วินาทีเพื่อช่วยให้คุณตามหาน้องหมาได้เร็วที่สุด</span>
+                    </div>
+                  </div>
+                ) : isLowBattery ? (
+                  <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-xs text-amber-900 leading-relaxed">
+                    <Battery className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">แบตเตอรี่เหลือน้อย ({battery}%): </span>
+                      <span>แนะนำให้นำปลอกคอของ {pet.name} มาเสียบชาร์จด้วยสาย USB Type-C</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-100 flex items-center gap-2.5 text-xs text-emerald-900 leading-relaxed">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <div>
+                      <span className="font-bold">ปลอดภัย: </span>
+                      <span>{pet.name} อยู่ในรั้วเขตปลอดภัย ({activeZone})</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. FOOTER: LAST UPDATED + DIRECT MAP & PROFILE ACTIONS */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-surface-100 text-xs text-surface-500">
+                  <p>อัปเดตล่าสุด: {formatTimeAgo(pet.updatedAt, locale)}</p>
+
+                  <div className="flex items-center gap-2">
+                    {/* View on Map Button */}
+                    <Link
+                      href="/dashboard"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface-100 hover:bg-surface-200 text-surface-800 font-bold text-xs transition active:scale-95"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-primary-600" />
+                      <span>ดูบนแผนที่</span>
+                    </Link>
+
+                    {/* View Details Profile Link */}
+                    <Link
+                      href={`/pet/${pet.id}`}
+                      className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl bg-surface-900 hover:bg-surface-800 text-white font-bold text-xs transition active:scale-95 shadow-xs"
+                    >
+                      <span>ดูรายละเอียด</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
                   </div>
                 </div>
               </Card>
@@ -226,18 +343,7 @@ export default function MyPetsPage() {
         </section>
       )}
 
-      <Card className="hidden rounded-3xl border-primary-100 bg-primary-50/70 p-5 sm:block">
-        <div className="flex items-center gap-4">
-          <span className="rounded-2xl bg-white p-3 text-primary-700 shadow-subtle">
-            <BellRing className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <div>
-            <h2 className="font-bold text-surface-900">ดูแลปลอกคอให้พร้อมติดตามอยู่เสมอ</h2>
-            <p className="text-sm text-surface-600">ชาร์จแบตเตอรี่และตรวจสอบพื้นที่ปลอดภัยเป็นประจำ เพื่อให้การแจ้งเตือนทำงานต่อเนื่อง</p>
-          </div>
-        </div>
-      </Card>
-
+      {/* Floating Add Button for Mobile */}
       <Link
         href="/pets/new"
         className="fixed bottom-24 right-5 z-dropdown inline-flex h-14 items-center gap-2 rounded-full bg-primary-600 px-5 font-bold text-white shadow-modal sm:hidden"
@@ -246,6 +352,14 @@ export default function MyPetsPage() {
         <Plus className="h-5 w-5" aria-hidden="true" />
         {t('pets.addPet')}
       </Link>
+
+      {/* Edit Dialog for Pet Photos and Information */}
+      <EditPetDialog
+        isOpen={Boolean(editingPet)}
+        onClose={() => setEditingPet(null)}
+        pet={editingPet}
+        onSave={updatePet}
+      />
     </div>
   );
 }

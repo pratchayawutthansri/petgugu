@@ -39,6 +39,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="th" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://tile.openstreetmap.org" />
+        <link rel="dns-prefetch" href="https://images.unsplash.com" />
+      </head>
       <body className="min-h-dvh bg-surface-50 text-surface-900 font-sans antialiased">
         <Providers>{children}</Providers>
       </body>

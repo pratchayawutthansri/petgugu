@@ -17,7 +17,10 @@ export async function GET(
     // Return sanitized public profile — strictly exclude live GPS coordinates
     return NextResponse.json({
       success: true,
-      data: pet.publicProfile,
+      data: {
+        ...pet.publicProfile,
+        isLost: Boolean(pet.isLost),
+      },
     });
   } catch (error: any) {
     return NextResponse.json(

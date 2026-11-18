@@ -69,7 +69,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (data: {
     displayName: string;
-    email: string;
+    username?: string;
+    email?: string;
     password: string;
     phoneNumber?: string;
   }): Promise<{ success: boolean; error?: string }> => {

@@ -17,7 +17,16 @@ export function usePets() {
     try {
       const res = await api.getPets();
       if (res.success && res.data) {
-        setPets(res.data);
+        const incomingPets = res.data;
+        setPets((prev) => {
+          if (
+            prev.length === incomingPets.length &&
+            JSON.stringify(prev) === JSON.stringify(incomingPets)
+          ) {
+            return prev;
+          }
+          return incomingPets;
+        });
       } else {
         setError(res.error || 'Failed to load pets');
       }
@@ -30,11 +39,24 @@ export function usePets() {
 
   useEffect(() => {
     fetchPets();
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        void fetchPets({ silent: true });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     const pollingId = window.setInterval(() => {
-      void fetchPets({ silent: true });
+      if (!document.hidden) {
+        void fetchPets({ silent: true });
+      }
     }, 10_000);
 
-    return () => window.clearInterval(pollingId);
+    return () => {
+      window.clearInterval(pollingId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchPets]);
 
   const createPet = async (petData: any): Promise<{ success: boolean; data?: Pet; error?: string }> => {

@@ -15,7 +15,8 @@ export const DEMO_PETS: Pet[] = [
     age: 3,
     gender: 'MALE',
     weight: 28.5,
-    healthNotes: 'สุขภาพแข็งแรง ขี้เล่น ชอบว่ายน้ำ แพ้อาหารที่มีส่วนผสมของไก่ (Allergic to chicken)',
+    coatColor: 'สีน้ำตาลทอง ขนหนานุ่ม มีแต้มขาวเล็กน้อยที่อก',
+    healthNotes: 'แพ้อาหารไก่และสัตว์ปีกทุกชนิด ทานได้เฉพาะสูตรปลาแซลมอน ไม่ดุ เป็นมิตรกับเด็กและสัตว์อื่น',
     primaryPhotoUrl: 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=800&q=80',
     photos: [
       {
@@ -63,9 +64,9 @@ export const DEMO_PETS: Pet[] = [
       id: 'pub_mochi_01',
       petId: 'pet_mochi_01',
       qrCodeId: 'QR-MOCHI-7749',
-      displayName: 'โมจิ (Mochi)',
+      displayName: 'โมจิ',
       species: 'DOG',
-      breed: 'โกลเด้น รีทรีฟเวอร์ (Golden Retriever)',
+      breed: 'โกลเด้น รีทรีฟเวอร์',
       photoUrl: 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=800&q=80',
       secondaryPhotos: [
         'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=800&q=80',
@@ -75,9 +76,9 @@ export const DEMO_PETS: Pet[] = [
       contactEmail: 'demo@pawsandco.com',
       allowDirectCall: true,
       allowFoundReport: true,
-      specialNeeds: 'แพ้อาหารไก่ — ห้ามให้อาหารที่มีส่วนผสมของไก่เด็ดขาด',
-      rewardNote: 'มีสินน้ำใจตอบแทนสำหรับผู้ที่ช่วยเหลือน้องส่งกลับบ้านอย่างปลอดภัย',
-      customMessage: 'โมจิเป็นสุนัขใจดีมาก ไม่ดุ สามารถเรียกชื่อหรือลูบหัวเบาๆ ได้ครับ',
+      specialNeeds: 'แพ้อาหารไก่เด็ดขาด ทานได้เฉพาะสูตรปลาแซลมอน',
+      rewardNote: 'มีสินน้ำใจ 3,000 บาท ขอบคุณที่ช่วยดูแลน้องครับ',
+      customMessage: 'น้องชื่อโมจิ นิสัยเป็นมิตร ไม่กัด สามารถเรียกชื่อน้องได้เลยครับ รบกวนโทรหาเจ้าของได้ตลอด 24 ชม.',
       isLost: false,
     },
     isLost: false,
@@ -95,7 +96,8 @@ export const DEMO_PETS: Pet[] = [
     age: 2,
     gender: 'FEMALE',
     weight: 9.8,
-    healthNotes: 'ค่อนข้างตื่นคนแปลกหน้าเล็กน้อย ชอบวิ่งเล่น',
+    coatColor: 'สีน้ำตาลแดง ขนสั้นแน่น อกขาวสไตล์ชิบะ',
+    healthNotes: 'สุขภาพแข็งแรง ระแวงคนแปลกหน้าเล็กน้อย ขี้ตกใจเสียงฟ้าร้องหรือประทัด ห้ามปล่อยสายจูงนอกบ้าน',
     primaryPhotoUrl: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=800&q=80',
     photos: [
       {
@@ -135,9 +137,9 @@ export const DEMO_PETS: Pet[] = [
       id: 'pub_lucky_02',
       petId: 'pet_lucky_02',
       qrCodeId: 'QR-LUCKY-9921',
-      displayName: 'ลัคกี้ (Lucky)',
+      displayName: 'ลัคกี้',
       species: 'DOG',
-      breed: 'ชิบะ อินุ (Shiba Inu)',
+      breed: 'ชิบะ อินุ',
       photoUrl: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=800&q=80',
       secondaryPhotos: [
         'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800&q=80',

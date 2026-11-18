@@ -15,7 +15,7 @@ export const DEMO_MOCHI_LOCATIONS: LocationHistory[] = [
     batteryLevel: 98,
     signalStrength: 95,
     eventType: 'AT_REST',
-    note: 'พักผ่อนที่บ้าน (Home Base)',
+    note: 'พักผ่อนอยู่ที่บ้าน',
     timestamp: '2026-08-25T00:00:00.000Z', // 07:00 UTC+7
   },
   {
@@ -30,7 +30,7 @@ export const DEMO_MOCHI_LOCATIONS: LocationHistory[] = [
     batteryLevel: 98,
     signalStrength: 92,
     eventType: 'MOVING',
-    note: 'เริ่มเดินออกจากบ้าน (Leaving yard)',
+    note: 'เริ่มออกเดินเล่นหน้าบ้าน',
     timestamp: '2026-08-25T00:15:00.000Z',
   },
   {
@@ -45,7 +45,7 @@ export const DEMO_MOCHI_LOCATIONS: LocationHistory[] = [
     batteryLevel: 97,
     signalStrength: 90,
     eventType: 'LEFT_ZONE',
-    note: 'ออกจากพื้นที่ปลอดภัย: บ้าน (Left Safe Zone: Home)',
+    note: 'เดินออกจากเขตบ้าน (สุขุมวิท)',
     timestamp: '2026-08-25T00:20:00.000Z',
   },
   {
@@ -105,7 +105,7 @@ export const DEMO_MOCHI_LOCATIONS: LocationHistory[] = [
     batteryLevel: 93,
     signalStrength: 96,
     eventType: 'ENTERED_ZONE',
-    note: 'เข้าสู่พื้นที่ปลอดภัย: สวนเบญจกิติ (Entered Safe Zone)',
+    note: 'เข้าสู่บริเวณสวนเบญจกิติ',
     timestamp: '2026-08-25T00:48:00.000Z',
   },
   {
@@ -180,7 +180,7 @@ export const DEMO_MOCHI_LOCATIONS: LocationHistory[] = [
     batteryLevel: 88,
     signalStrength: 94,
     eventType: 'MOVING',
-    note: 'กำลังเดินกลับทางเดิม (Heading back)',
+    note: 'กำลังเดินมุ่งหน้ากลับบ้าน',
     timestamp: '2026-08-25T02:00:00.000Z',
   },
   // Latest Live Position (Current)
@@ -196,7 +196,7 @@ export const DEMO_MOCHI_LOCATIONS: LocationHistory[] = [
     batteryLevel: 88,
     signalStrength: 92,
     eventType: 'MOVING',
-    note: 'อยู่ในสวนเบญจกิติ (Live Location)',
+    note: 'วิ่งเล่นอยู่ในสวนเบญจกิติ',
     timestamp: '2026-08-25T13:25:00.000Z',
   },
 ];

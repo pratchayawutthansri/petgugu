@@ -17,9 +17,16 @@ if (typeof window !== 'undefined') {
 
 function ChangeView({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
+  const [lat, lng] = center;
+
   useEffect(() => {
-    map.setView(center, zoom);
-  }, [center, zoom, map]);
+    const current = map.getCenter();
+    const distanceMoved = Math.hypot(current.lat - lat, current.lng - lng);
+    if (distanceMoved > 0.0002) {
+      map.panTo([lat, lng], { animate: true, duration: 0.4 });
+    }
+  }, [lat, lng, map]);
+
   return null;
 }
 
@@ -37,6 +44,7 @@ export function LeafletMapInner({
       center={center}
       zoom={zoom}
       scrollWheelZoom={true}
+      preferCanvas={true}
       className="h-full w-full z-0"
     >
       <ChangeView center={center} zoom={zoom} />
@@ -44,6 +52,9 @@ export function LeafletMapInner({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         maxZoom={19}
+        keepBuffer={4}
+        updateWhenZooming={false}
+        updateWhenIdle={true}
       />
       {children}
     </MapContainer>

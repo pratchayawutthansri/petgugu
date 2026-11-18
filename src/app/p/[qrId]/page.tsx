@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import {
   PhoneCall,
   MapPin,
@@ -158,28 +159,56 @@ export default function PublicPetProfilePage() {
       </div>
 
       {/* Main Public Profile Card */}
-      <Card className="max-w-md mx-auto p-6 sm:p-8 shadow-modal border-surface-200 text-center space-y-6">
-        {/* Found Banner */}
-        <div className="p-4 rounded-2xl bg-primary-50 border border-primary-100 text-left space-y-1">
-          <div className="flex items-center gap-2 text-primary-900 font-bold text-sm">
-            <Heart className="w-4 h-4 text-primary fill-primary" />
-            <span>{t('public.foundTitle')}</span>
+      <Card
+        className={cn(
+          'max-w-md mx-auto p-6 sm:p-8 shadow-modal text-center space-y-6 transition-all',
+          profile.isLost ? 'border-2 border-danger-400 ring-4 ring-danger-100' : 'border-surface-200'
+        )}
+      >
+        {/* Found Banner (Switches to Emergency Lost Pet alert if isLost is true) */}
+        {profile.isLost ? (
+          <div className="p-4 rounded-2xl bg-danger-50 border-2 border-danger-300 text-left space-y-1.5 animate-pulse-subtle">
+            <div className="flex items-center gap-2 text-danger-700 font-extrabold text-sm sm:text-base">
+              <span className="flex h-3 w-3 rounded-full bg-danger-600 animate-ping" />
+              <AlertTriangle className="w-5 h-5 text-danger-600 flex-shrink-0" />
+              <span>🚨 สัตว์เลี้ยงตัวนี้กำลังพลัดหลง! (เจ้าของตามหาด่วน)</span>
+            </div>
+            <p className="text-xs text-danger-900 font-semibold leading-relaxed">
+              เจ้าของได้เปิดสัญญาณฉุกเฉินตามหาน้อง หากคุณพบเห็น กรุณาช่วยดูแลน้องในที่ปลอดภัย และกดปุ่มโทรหาเจ้าของด้านล่างนี้ทันที ขอบพระคุณมากครับ
+            </p>
           </div>
-          <p className="text-xs text-primary-700 leading-relaxed">
-            {t('public.foundSubtitle')}
-          </p>
-        </div>
+        ) : (
+          <div className="p-4 rounded-2xl bg-primary-50 border border-primary-100 text-left space-y-1">
+            <div className="flex items-center gap-2 text-primary-900 font-bold text-sm">
+              <Heart className="w-4 h-4 text-primary fill-primary" />
+              <span>{t('public.foundTitle')}</span>
+            </div>
+            <p className="text-xs text-primary-700 leading-relaxed">
+              {t('public.foundSubtitle')}
+            </p>
+          </div>
+        )}
 
         {/* Pet Primary Photo with Halo */}
         <div className="relative mx-auto w-36 h-36 sm:w-40 sm:h-40">
           <img
             src={profile.photoUrl}
             alt={profile.displayName}
-            className="w-full h-full rounded-full object-cover border-4 border-white shadow-lg ring-4 ring-primary-100"
+            className={cn(
+              'w-full h-full rounded-full object-cover border-4 border-white shadow-lg',
+              profile.isLost ? 'ring-4 ring-danger-500 animate-pulse' : 'ring-4 ring-primary-100'
+            )}
           />
-          <span className="absolute bottom-1 right-2 rounded-full bg-primary p-2 text-white shadow-md">
-            <PawPrint className="h-4 w-4" aria-hidden="true" />
-          </span>
+          {profile.isLost ? (
+            <span className="absolute bottom-1 right-0 rounded-full bg-danger-600 px-2.5 py-1 text-white text-[11px] font-extrabold shadow-md flex items-center gap-1 border-2 border-white">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>ตามหาด่วน</span>
+            </span>
+          ) : (
+            <span className="absolute bottom-1 right-2 rounded-full bg-primary p-2 text-white shadow-md">
+              <PawPrint className="h-4 w-4" aria-hidden="true" />
+            </span>
+          )}
         </div>
 
         {/* Pet Name & Identity */}
@@ -190,9 +219,6 @@ export default function PublicPetProfilePage() {
           <p className="text-sm font-semibold text-primary mt-1">
             {profile.breed}
           </p>
-          <div className="inline-flex items-center gap-2 mt-2 px-3 py-1 rounded-full bg-surface-100 text-xs font-mono text-surface-600 font-bold">
-            <span>Tag ID: {profile.qrCodeId}</span>
-          </div>
         </div>
 
         {/* Direct Emergency Call Button */}
@@ -204,17 +230,22 @@ export default function PublicPetProfilePage() {
             <Button
               variant="primary"
               size="lg"
-              className="w-full py-4 text-base font-bold shadow-md bg-success hover:bg-success-600 focus-visible:outline-success"
+              className={cn(
+                'w-full py-4 text-base font-extrabold shadow-lg focus-visible:outline-none transition-all',
+                profile.isLost
+                  ? 'bg-danger-600 hover:bg-danger-700 ring-4 ring-danger-200'
+                  : 'bg-success hover:bg-success-600 ring-2 ring-success-100'
+              )}
               leftIcon={<PhoneCall className="w-5 h-5 animate-bounce-soft" />}
             >
-              {t('public.callOwner')} ({profile.contactPhone})
+              {profile.isLost ? `โทรแจ้งเจ้าของด่วน (${profile.contactPhone})` : `${t('public.callOwner')} (${profile.contactPhone})`}
             </Button>
           </a>
 
           <Button
             variant="outline"
             size="md"
-            className="w-full"
+            className="w-full font-bold"
             leftIcon={<MapPin className="w-4 h-4 text-primary" />}
             onClick={() => setShowReportModal(true)}
           >

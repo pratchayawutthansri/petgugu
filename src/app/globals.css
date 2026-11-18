@@ -92,6 +92,20 @@
     @apply min-h-touch min-w-touch;
   }
 
+  /* Toast Top-Left Floating Container */
+  .toast-container-top-left {
+    position: fixed !important;
+    top: 80px !important;
+    left: 16px !important;
+    z-index: 99999 !important;
+  }
+
+  @media (min-width: 1024px) {
+    .toast-container-top-left {
+      left: 296px !important;
+    }
+  }
+
   /* Card base style */
   .card {
     @apply bg-white rounded-2xl shadow-card border border-surface-200 transition-all duration-200;
@@ -222,10 +236,25 @@
   }
 }
 
-/* --- Leaflet Map Overrides --- */
+/* --- Leaflet Map Overrides & Performance Acceleration --- */
 .leaflet-container {
   @apply font-sans rounded-2xl;
   z-index: 1;
+  outline: none;
+}
+
+.leaflet-pane,
+.leaflet-marker-icon,
+.leaflet-zoom-animated,
+.custom-pet-marker {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.leaflet-tile {
+  image-rendering: -webkit-optimize-contrast;
+  will-change: transform;
 }
 
 .leaflet-control-zoom a {

@@ -164,6 +164,13 @@ class DemoStore {
       updatedAt: new Date().toISOString(),
     };
 
+    if (typeof updates.isLost === 'boolean' && this.pets[idx].publicProfile) {
+      this.pets[idx].publicProfile = {
+        ...this.pets[idx].publicProfile,
+        isLost: updates.isLost,
+      };
+    }
+
     if (typeof updates.batterySaver === 'boolean' && this.pets[idx].deviceId) {
       const updatedDevice = this.updateDevice(this.pets[idx].deviceId!, {
         powerSaveMode: updates.batterySaver,

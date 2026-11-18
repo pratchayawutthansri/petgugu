@@ -77,7 +77,7 @@ export default function SettingsPage() {
 
       {/* TAB 1: Account */}
       {activeTab === 'account' && (
-        <Card className="p-6 space-y-6">
+        <Card className="p-5 sm:p-6 space-y-6">
           <CardHeader className="p-0 pb-3 border-b border-surface-100">
             <CardTitle>{t('settings.accountTab')}</CardTitle>
           </CardHeader>
@@ -117,7 +117,7 @@ export default function SettingsPage() {
 
       {/* TAB 2: Notifications */}
       {activeTab === 'notifications' && (
-        <Card className="p-6 space-y-6">
+        <Card className="p-5 sm:p-6 space-y-6">
           <CardHeader className="p-0 pb-3 border-b border-surface-100">
             <CardTitle>{t('settings.notificationTab')}</CardTitle>
           </CardHeader>
@@ -139,14 +139,14 @@ export default function SettingsPage() {
 
             <Switch
               label={t('settings.offlineAlert')}
-              description="แจ้งเตือนเมื่อปลอกคอขาดการส่งข้อมูล Telemetry เกิน 1 ชั่วโมง"
+              description="แจ้งเตือนเมื่อปลอกคอขาดการเชื่อมต่อเกิน 1 ชั่วโมง"
               checked={offlineAlert}
               onChange={(e) => setOfflineAlert(e.target.checked)}
             />
 
             <Switch
-              label="รายงานสรุปกิจกรรมประจำสัปดาห์ (Weekly Activity Digest)"
-              description="รับอีเมลสรุปสถิติการเดินและกิจกรรมของสัตว์เลี้ยงทุกวันอาทิตย์"
+              label="รายงานสรุปกิจกรรมประจำสัปดาห์"
+              description="รับสรุปสถิติการเดินและกิจกรรมของสัตว์เลี้ยงทุกวันอาทิตย์"
               checked={weeklyReport}
               onChange={(e) => setWeeklyReport(e.target.checked)}
             />
@@ -166,7 +166,7 @@ export default function SettingsPage() {
 
       {/* TAB 3: Language */}
       {activeTab === 'language' && (
-        <Card className="p-6 space-y-6">
+        <Card className="p-5 sm:p-6 space-y-6">
           <CardHeader className="p-0 pb-3 border-b border-surface-100">
             <CardTitle>{t('settings.languageTab')}</CardTitle>
           </CardHeader>
@@ -185,7 +185,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🇹🇭</span>
                 <div>
-                  <span className="font-bold text-surface-900 block">ภาษาไทย (Thai)</span>
+                  <span className="font-bold text-surface-900 block">ภาษาไทย</span>
                   <span className="text-xs text-surface-500">ตั้งค่าเริ่มต้นสำหรับผู้ใช้ในประเทศไทย</span>
                 </div>
               </div>
@@ -205,7 +205,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🇬🇧</span>
                 <div>
-                  <span className="font-bold text-surface-900 block">English (US/UK)</span>
+                  <span className="font-bold text-surface-900 block">English</span>
                   <span className="text-xs text-surface-500">International language option</span>
                 </div>
               </div>
@@ -217,7 +217,7 @@ export default function SettingsPage() {
 
       {/* TAB 4: Plan & Usage Limits */}
       {activeTab === 'plan' && (
-        <Card className="p-6 space-y-6">
+        <Card className="p-5 sm:p-6 space-y-6">
           <CardHeader className="p-0 pb-3 border-b border-surface-100">
             <div className="flex items-center justify-between">
               <CardTitle>{t('settings.planTab')}</CardTitle>
@@ -240,7 +240,7 @@ export default function SettingsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="p-4 rounded-xl bg-surface-50 border border-surface-100 text-left">
-                <span className="text-xs text-surface-500 block">สัตว์เลี้ยง (Pets)</span>
+                <span className="text-xs text-surface-500 block">สัตว์เลี้ยงที่ดูแล</span>
                 <span className="text-lg font-bold text-surface-900">2 / 5 ตัว</span>
                 <div className="w-full bg-surface-200 h-1.5 rounded-full mt-2 overflow-hidden">
                   <div className="bg-primary h-full rounded-full" style={{ width: '40%' }} />
@@ -276,7 +276,7 @@ export default function SettingsPage() {
       )}
 
       {/* Danger Zone */}
-      <Card className="p-6 border-danger-200 bg-danger-50/20">
+      <Card className="p-5 sm:p-6 border-danger-200 bg-danger-50/20">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h4 className="font-bold text-danger-700 flex items-center gap-2">

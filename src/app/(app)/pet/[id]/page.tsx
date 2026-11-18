@@ -12,11 +12,13 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, ConfirmDialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { TrackingMap } from '@/components/map/dynamic-tracking-map';
+import { EditPetDialog } from '@/components/pets/edit-pet-dialog';
 import {
   AlertTriangle,
   ArrowLeft,
   Battery,
   CalendarDays,
+  Camera,
   CheckCircle2,
   Cpu,
   Edit,
@@ -75,12 +77,6 @@ export default function PetDetailsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [isSavingEdit, setIsSavingEdit] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [editBreed, setEditBreed] = useState('');
-  const [editAge, setEditAge] = useState(0);
-  const [editWeight, setEditWeight] = useState(0);
-  const [editHealth, setEditHealth] = useState('');
   const [showVaccineModal, setShowVaccineModal] = useState(false);
   const [isAddingVaccine, setIsAddingVaccine] = useState(false);
   const [vacName, setVacName] = useState('');
@@ -125,33 +121,15 @@ export default function PetDetailsPage() {
   const signal = getSignalInfo(signalStrength);
   const gallery = pet.photos?.length
     ? pet.photos
-    : [{ id: 'primary', petId: pet.id, url: pet.primaryPhotoUrl, isPrimary: true, createdAt: pet.createdAt }];
-  const secondaryPhotos = gallery.filter((photo) => photo.url !== pet.primaryPhotoUrl).slice(0, 2);
+    : pet.primaryPhotoUrl
+    ? [{ id: 'primary', petId: pet.id, url: pet.primaryPhotoUrl, isPrimary: true, createdAt: pet.createdAt }]
+    : [];
+  const secondaryPhotos = gallery.filter((photo) => photo.url && photo.url !== pet.primaryPhotoUrl).slice(0, 2);
   const safeZoneCount = pet.safeZones?.filter((zone) => zone.isActive).length || 0;
   const profileUrl = typeof window === 'undefined' ? `/p/${pet.qrCodeId}` : `${window.location.origin}/p/${pet.qrCodeId}`;
 
   const handleOpenEdit = () => {
-    setEditName(pet.name);
-    setEditBreed(pet.breed);
-    setEditAge(pet.age);
-    setEditWeight(pet.weight);
-    setEditHealth(pet.healthNotes || '');
     setShowEditModal(true);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editName.trim() || !editBreed.trim()) {
-      showToast({ type: 'warning', message: 'กรุณากรอกชื่อและสายพันธุ์ให้ครบถ้วน' });
-      return;
-    }
-    setIsSavingEdit(true);
-    try {
-      const response = await updatePet(pet.id, { name: editName.trim(), breed: editBreed.trim(), age: editAge, weight: editWeight, healthNotes: editHealth.trim() });
-      if (response.success) setShowEditModal(false);
-      else showToast({ type: 'error', message: response.error || 'บันทึกข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง' });
-    } finally {
-      setIsSavingEdit(false);
-    }
   };
 
   const handleDelete = async () => {
@@ -245,25 +223,68 @@ export default function PetDetailsPage() {
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.18fr)_minmax(400px,0.82fr)]" aria-labelledby="pet-profile-title">
         <Card className="overflow-hidden rounded-3xl border-0 bg-surface-950 shadow-card xl:h-full">
           <div className="grid h-[460px] grid-cols-1 gap-1.5 sm:h-[540px] sm:grid-cols-[minmax(0,2fr)_minmax(180px,1fr)] xl:h-full xl:min-h-[620px]">
-            <button type="button" onClick={() => setSelectedPhoto(pet.primaryPhotoUrl)} className="group relative min-w-0 overflow-hidden bg-surface-900 text-left" aria-label={`เปิดรูปหลักของ ${pet.name}`}>
-              <img src={pet.primaryPhotoUrl} alt={`รูปหลักของ ${pet.name}`} loading="eager" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]" />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-surface-950/95 via-surface-950/55 to-transparent p-4 pt-20 sm:p-5 sm:pt-24">
-                <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-white">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/15 px-3 py-1.5 backdrop-blur-md"><Radio className="h-3.5 w-3.5 text-success-300" aria-hidden="true" />{isOnline ? 'เชื่อมต่อสด' : 'ออฟไลน์'}</span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/15 px-3 py-1.5 backdrop-blur-md"><Battery className="h-3.5 w-3.5 text-success-300" aria-hidden="true" /> {battery}%</span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/15 px-3 py-1.5 backdrop-blur-md"><ShieldCheck className="h-3.5 w-3.5 text-secondary-300" aria-hidden="true" /> {safeZoneCount} Safe zones</span>
+            <div className="relative min-w-0 overflow-hidden bg-surface-900">
+              <button
+                type="button"
+                onClick={() => pet.primaryPhotoUrl && setSelectedPhoto(pet.primaryPhotoUrl)}
+                className="group relative block h-full w-full text-left"
+                aria-label={`เปิดรูปหลักของ ${pet.name}`}
+              >
+                {pet.primaryPhotoUrl ? (
+                  <img
+                    src={pet.primaryPhotoUrl}
+                    alt={`รูปหลักของ ${pet.name}`}
+                    loading="eager"
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                  />
+                ) : (
+                  <div className="flex h-full min-h-[360px] w-full flex-col items-center justify-center bg-gradient-to-br from-primary-950 via-surface-900 to-surface-950 text-white/70 p-4">
+                    <PawPrint className="h-16 w-16 opacity-40 text-primary-300" />
+                    <span className="mt-3 text-sm font-bold text-white/80">ไม่มีรูปภาพในโปรไฟล์</span>
+                  </div>
+                )}
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-surface-950/95 via-surface-950/55 to-transparent p-4 pt-20 sm:p-5 sm:pt-24">
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-white">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/15 px-3 py-1.5 backdrop-blur-md"><Radio className="h-3.5 w-3.5 text-success-300" aria-hidden="true" />{isOnline ? 'เชื่อมต่อสด' : 'ออฟไลน์'}</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/15 px-3 py-1.5 backdrop-blur-md"><Battery className="h-3.5 w-3.5 text-success-300" aria-hidden="true" /> {battery}%</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/15 px-3 py-1.5 backdrop-blur-md"><ShieldCheck className="h-3.5 w-3.5 text-secondary-300" aria-hidden="true" /> {safeZoneCount} Safe zones</span>
+                  </div>
+                  {pet.primaryPhotoUrl && <p className="mt-3 text-sm font-medium text-white/80">แตะเพื่อดูรูปขนาดเต็ม</p>}
                 </div>
-                <p className="mt-3 text-sm font-medium text-white/80">แตะเพื่อดูรูปขนาดเต็ม</p>
-              </div>
-              <span className="absolute right-4 top-4 rounded-full bg-surface-950/70 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-md">1 / {gallery.length}</span>
-            </button>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowEditModal(true);
+                }}
+                className="absolute left-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-surface-950/80 px-3.5 py-1.5 text-xs font-bold text-white shadow-card backdrop-blur-md transition hover:bg-primary-600 hover:scale-105 active:scale-95"
+                title="เปลี่ยนรูปโปรไฟล์หรือแก้ไขข้อมูล"
+              >
+                <Camera className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />
+                <span>เปลี่ยนรูป / แก้ไข</span>
+              </button>
+              <span className="absolute right-4 top-4 rounded-full bg-surface-950/70 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-md">
+                {gallery.length > 0 ? `1 / ${gallery.length}` : '0 รูป'}
+              </span>
+            </div>
             <div className="hidden grid-rows-2 gap-1.5 sm:grid">
               {secondaryPhotos.map((photo, index) => (
                 <button key={photo.id} type="button" onClick={() => setSelectedPhoto(photo.url)} className="group relative overflow-hidden bg-surface-900" aria-label={`เปิดรูปที่ ${index + 2} ของ ${pet.name}`}>
                   <img src={photo.url} alt={`${pet.name} รูปที่ ${index + 2}`} loading="lazy" className="h-full w-full object-cover opacity-95 transition duration-500 group-hover:scale-[1.03] group-hover:opacity-100" />
                 </button>
               ))}
-              {secondaryPhotos.length < 2 && <div className="flex items-center justify-center bg-gradient-to-br from-primary-700 to-surface-950 text-white"><PawPrint className="h-10 w-10 opacity-35" aria-hidden="true" /></div>}
+              {secondaryPhotos.length < 2 && (
+                <button
+                  type="button"
+                  onClick={handleOpenEdit}
+                  className="flex flex-col items-center justify-center bg-gradient-to-br from-primary-800 to-surface-950 text-white hover:bg-primary-700 transition gap-1.5 group cursor-pointer"
+                  title="เพิ่มรูปภาพของน้อง"
+                >
+                  <Plus className="h-6 w-6 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition" aria-hidden="true" />
+                  <span className="text-[11px] font-bold opacity-75 group-hover:opacity-100">เพิ่มรูปภาพ</span>
+                </button>
+              )}
             </div>
           </div>
         </Card>
@@ -285,13 +306,19 @@ export default function PetDetailsPage() {
           </dl>
 
           <div className="mt-6 rounded-2xl border border-warning-100 bg-warning-50/70 p-4">
-            <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wide text-warning-800"><HeartPulse className="h-4 w-4" aria-hidden="true" /> ข้อมูลดูแลสำคัญ</p>
-            <p className="mt-2 text-sm leading-6 text-warning-900">{pet.healthNotes || 'ยังไม่มีบันทึกสุขภาพหรือข้อควรระวัง'}</p>
+            <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wide text-warning-800"><HeartPulse className="h-4 w-4" aria-hidden="true" /> ข้อมูลสุขภาพ & ข้อควรระวัง</p>
+            <p className="mt-2 text-sm leading-6 text-warning-900">{pet.healthNotes || 'ยังไม่มีบันทึกข้อมูลสุขภาพหรือข้อควรระวัง'}</p>
           </div>
 
           <dl className="mt-6 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-surface-100 pt-5 text-sm">
-            <div className="min-w-0"><dt className="text-xs font-semibold text-surface-400">ประเภท</dt><dd className="mt-1 font-bold text-surface-900">{pet.species}</dd></div>
+            <div className="min-w-0"><dt className="text-xs font-semibold text-surface-400">ประเภท</dt><dd className="mt-1 font-bold text-surface-900">{pet.species === 'DOG' ? 'สุนัข' : pet.species === 'CAT' ? 'แมว' : pet.species}</dd></div>
             <div className="min-w-0"><dt className="text-xs font-semibold text-surface-400">QR Tag ID</dt><dd className="mt-1 break-words font-bold text-surface-900">{pet.qrCodeId}</dd></div>
+            {pet.coatColor && (
+              <div className="min-w-0"><dt className="text-xs font-semibold text-surface-400">สีขน / ลักษณะเด่น</dt><dd className="mt-1 font-bold text-surface-900">{pet.coatColor}</dd></div>
+            )}
+            {pet.publicProfile?.contactPhone && (
+              <div className="min-w-0"><dt className="text-xs font-semibold text-surface-400">เบอร์ติดต่อเจ้าของ</dt><dd className="mt-1 font-bold text-surface-900">{pet.publicProfile.contactPhone}</dd></div>
+            )}
             <div className="col-span-2 min-w-0"><dt className="text-xs font-semibold text-surface-400">อัปเดตข้อมูลล่าสุด</dt><dd className="mt-1 font-bold text-surface-900">{formatDate(pet.updatedAt, locale)}</dd></div>
           </dl>
 
@@ -377,9 +404,12 @@ export default function PetDetailsPage() {
       {selectedPhoto && <Dialog isOpen onClose={() => setSelectedPhoto(null)} size="xl" title={`รูปภาพของ ${pet.name}`}><img src={selectedPhoto} alt={`ภาพขยายของ ${pet.name}`} className="mx-auto max-h-[78vh] w-full rounded-2xl object-contain" /></Dialog>}
 
       {showEditModal && (
-        <Dialog isOpen onClose={() => !isSavingEdit && setShowEditModal(false)} title="แก้ไขข้อมูลสัตว์เลี้ยง" description="ข้อมูลนี้จะแสดงในโปรไฟล์ส่วนตัวของคุณ" size="md">
-          <div className="space-y-4 pt-2"><Input label="ชื่อสัตว์เลี้ยง *" value={editName} onChange={(event) => setEditName(event.target.value)} /><Input label="สายพันธุ์ *" value={editBreed} onChange={(event) => setEditBreed(event.target.value)} /><div className="grid grid-cols-2 gap-3"><Input label="อายุ (ปี)" type="number" min={0} value={editAge} onChange={(event) => setEditAge(Number(event.target.value))} /><Input label="น้ำหนัก (กก.)" type="number" min={0} step="0.1" value={editWeight} onChange={(event) => setEditWeight(Number(event.target.value))} /></div><label className="block text-sm font-medium text-surface-700">บันทึกสุขภาพ<textarea rows={4} value={editHealth} onChange={(event) => setEditHealth(event.target.value)} className="mt-1 w-full rounded-xl border border-surface-300 p-3 text-base focus:border-primary-500 focus:ring-2 focus:ring-primary-100" /></label><div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><Button variant="outline" onClick={() => setShowEditModal(false)} disabled={isSavingEdit}>ยกเลิก</Button><Button onClick={handleSaveEdit} isLoading={isSavingEdit}>บันทึกข้อมูล</Button></div></div>
-        </Dialog>
+        <EditPetDialog
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          pet={pet}
+          onSave={updatePet}
+        />
       )}
 
       {showVaccineModal && (

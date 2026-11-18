@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Pet } from '@/types';
@@ -12,10 +12,8 @@ export interface PetMarkerProps {
   onClick?: () => void;
 }
 
-export function PetMarker({ pet, onClick }: PetMarkerProps) {
+export const PetMarker = React.memo(function PetMarker({ pet, onClick }: PetMarkerProps) {
   const loc = pet.latestLocation;
-  if (!loc) return null;
-
   const isOnline = pet.device?.isOnline ?? true;
   const isLost = pet.isLost;
 
@@ -26,56 +24,64 @@ export function PetMarker({ pet, onClick }: PetMarkerProps) {
     ? '#10B981' // Green Online
     : '#94A3B8'; // Gray Offline
 
-  // Create custom HTML DivIcon with avatar image
-  const customIcon = L.divIcon({
-    className: 'custom-pet-marker',
-    html: `
-      <div style="position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
-        <div style="
-          position: absolute;
-          inset: 0;
-          border-radius: 9999px;
-          background-color: ${ringColor};
-          opacity: 0.35;
-          animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
-        "></div>
-        <div style="
-          position: relative;
-          width: 40px;
-          height: 40px;
-          border-radius: 9999px;
-          border: 3px solid ${ringColor};
-          background-color: white;
-          overflow: hidden;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
-        ">
-          <img 
-            src="${pet.primaryPhotoUrl}" 
-            alt="${pet.name}" 
-            style="width: 100%; height: 100%; object-fit: cover;" 
-          />
-        </div>
-        <div style="
-          position: absolute;
-          bottom: -4px;
-          right: -2px;
-          background-color: ${ringColor};
-          color: white;
-          font-size: 9px;
-          font-weight: bold;
-          padding: 1px 4px;
-          border-radius: 9999px;
-          border: 1.5px solid white;
-          box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        ">
-          ${isLost ? 'SOS' : isOnline ? 'ON' : 'OFF'}
-        </div>
-      </div>
-    `,
-    iconSize: [48, 48],
-    iconAnchor: [24, 24],
-    popupAnchor: [0, -26],
-  });
+  // Memoize custom HTML DivIcon to prevent recreation on every render
+  const customIcon = useMemo(
+    () =>
+      L.divIcon({
+        className: 'custom-pet-marker',
+        html: `
+          <div style="position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; transform: translateZ(0); will-change: transform;">
+            <div style="
+              position: absolute;
+              inset: 0;
+              border-radius: 9999px;
+              background-color: ${ringColor};
+              opacity: 0.35;
+              animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+            "></div>
+            <div style="
+              position: relative;
+              width: 40px;
+              height: 40px;
+              border-radius: 9999px;
+              border: 3px solid ${ringColor};
+              background-color: white;
+              overflow: hidden;
+              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
+            ">
+              <img 
+                src="${pet.primaryPhotoUrl}" 
+                alt="${pet.name}" 
+                loading="lazy"
+                decoding="async"
+                style="width: 100%; height: 100%; object-fit: cover;" 
+              />
+            </div>
+            <div style="
+              position: absolute;
+              bottom: -4px;
+              right: -2px;
+              background-color: ${ringColor};
+              color: white;
+              font-size: 9px;
+              font-weight: bold;
+              padding: 1px 4px;
+              border-radius: 9999px;
+              border: 1.5px solid white;
+              box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            ">
+              ${isLost ? 'SOS' : isOnline ? 'ON' : 'OFF'}
+            </div>
+          </div>
+        `,
+        iconSize: [48, 48],
+        iconAnchor: [24, 24],
+        popupAnchor: [0, -26],
+      }),
+    [pet.primaryPhotoUrl, pet.name, isLost, isOnline, ringColor]
+  );
+
+  if (!loc) return null;
 
   return (
     <Marker
@@ -128,4 +134,4 @@ export function PetMarker({ pet, onClick }: PetMarkerProps) {
       </Popup>
     </Marker>
   );
-}
+});
