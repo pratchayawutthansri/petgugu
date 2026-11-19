@@ -107,6 +107,37 @@ export function getBatteryColor(level: number): string {
 }
 
 /**
+ * Automatically format phone number as user types:
+ * - 4-3-4 prefix or 11 digits (e.g. 0123-444-4444)
+ * - 3-3-4 standard mobile (e.g. 081-234-5678)
+ * - 2-3-4 Bangkok landline (e.g. 02-123-4567)
+ */
+export function formatPhoneInput(value: string): string {
+  if (!value) return '';
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (!digits) return '';
+
+  // 1. Explicit 4-digit prefix or 11-digit numbers (e.g. 0123-444-4444)
+  if (digits.startsWith('0123') || digits.length === 11) {
+    if (digits.length <= 4) return digits;
+    if (digits.length <= 7) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+    return `${digits.slice(0, 4)}-${digits.slice(4, 7)}-${digits.slice(7, 11)}`;
+  }
+
+  // 2. Bangkok 9-digit landline (02-xxx-xxxx)
+  if (digits.startsWith('02') && digits.length <= 9) {
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 5) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}-${digits.slice(2, 5)}-${digits.slice(5, 9)}`;
+  }
+
+  // 3. Standard 10-digit mobile (0xx-xxx-xxxx)
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+}
+
+/**
  * Format signal strength percentage into label & color
  */
 export function getSignalInfo(strength: number): { label: string; color: string; bars: number } {

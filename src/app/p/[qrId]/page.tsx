@@ -12,9 +12,10 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
+import { cn, formatPhoneInput } from '@/lib/utils';
 import {
   PhoneCall,
+  Phone,
   MapPin,
   AlertTriangle,
   Heart,
@@ -312,9 +313,10 @@ export default function PublicPetProfilePage() {
             <Input
               label={t('public.reporterPhone')}
               type="tel"
-              placeholder="089-123-4567"
+              leftIcon={<Phone className="w-4 h-4 text-surface-400" />}
+              placeholder="เช่น 081-234-5678 หรือ 0123-444-4444"
               value={reporterPhone}
-              onChange={(e) => setReporterPhone(e.target.value)}
+              onChange={(e) => setReporterPhone(formatPhoneInput(e.target.value))}
             />
 
             <div className="space-y-1.5">

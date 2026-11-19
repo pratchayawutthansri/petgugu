@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip } from '@/components/ui/tooltip';
+import { formatPhoneInput } from '@/lib/utils';
 import {
   User,
   Bell,
@@ -22,6 +23,7 @@ import {
   Check,
   Zap,
   Camera,
+  Phone,
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -226,8 +228,11 @@ export default function SettingsPage() {
 
             <Input
               label={t('settings.phone')}
+              type="tel"
+              leftIcon={<Phone className="w-4 h-4 text-surface-400" />}
+              placeholder="เช่น 081-234-5678 หรือ 0123-444-4444"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={(e) => setPhoneNumber(formatPhoneInput(e.target.value))}
             />
 
             <div className="pt-4 flex justify-end">

@@ -9,6 +9,7 @@ import { loginSchema, registerSchema, LoginInput, RegisterInput } from '@/schema
 import { useAuth } from '@/contexts/auth-context';
 import { useLanguage } from '@/contexts/language-context';
 import { useToast } from '@/contexts/toast-context';
+import { formatPhoneInput } from '@/lib/utils';
 import {
   Lock,
   User as UserIcon,
@@ -483,15 +484,21 @@ export default function AuthPage() {
                   )}
                 </div>
 
-                {/* Phone Number Input */}
+                {/* Phone Number Input with Auto-formatting (e.g. 0123-444-4444 or 081-234-5678) */}
                 <div>
                   <div className="relative rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
                     <Phone className="w-4 h-4 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="tel"
-                      placeholder="08X-XXX-XXXX"
-                      className="w-full pl-11 pr-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 bg-transparent rounded-xl outline-none"
-                      {...registerForm.register('phoneNumber')}
+                      placeholder="0123-444-4444 หรือ 08X-XXX-XXXX"
+                      className="w-full pl-11 pr-4 py-3 text-sm font-medium tracking-wide text-neutral-900 placeholder:text-neutral-400 bg-transparent rounded-xl outline-none"
+                      {...registerForm.register('phoneNumber', {
+                        onChange: (e) => {
+                          const formatted = formatPhoneInput(e.target.value);
+                          e.target.value = formatted;
+                          registerForm.setValue('phoneNumber', formatted, { shouldValidate: true });
+                        },
+                      })}
                     />
                   </div>
                   {registerForm.formState.errors.phoneNumber && (

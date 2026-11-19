@@ -32,7 +32,7 @@ import {
   Eye,
   PawPrint,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatPhoneInput } from '@/lib/utils';
 
 export const POPULAR_PET_PHOTOS = [
   {
@@ -907,9 +907,11 @@ export function EditPetDialog({ isOpen, onClose, pet, onSave }: EditPetDialogPro
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input
                     label="เบอร์โทรติดต่อเจ้าของ *"
-                    placeholder="เช่น 081-234-5678"
+                    type="tel"
+                    leftIcon={<Phone className="w-4 h-4 text-surface-400" />}
+                    placeholder="เช่น 081-234-5678 หรือ 0123-444-4444"
                     value={emergencyPhone}
-                    onChange={(e) => setEmergencyPhone(e.target.value)}
+                    onChange={(e) => setEmergencyPhone(formatPhoneInput(e.target.value))}
                     required
                   />
 
