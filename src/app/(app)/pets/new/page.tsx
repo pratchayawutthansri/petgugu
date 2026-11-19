@@ -82,7 +82,7 @@ const PRESET_PET_PHOTOS = [
 export default function AddPetPage() {
   const router = useRouter();
   const { createPet } = usePets();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { showToast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
@@ -386,24 +386,32 @@ export default function AddPetPage() {
           />
 
           <CardHeader className="p-0 pb-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Camera className="w-5 h-5 text-primary" />
-                <CardTitle>{t('addPet.photosTitle')}</CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Camera className="w-5 h-5 text-primary flex-shrink-0" />
+                <CardTitle className="truncate">
+                  {locale === 'th' ? 'อัปโหลดรูปภาพสัตว์เลี้ยง' : 'Upload Pet Photos'}
+                  <span className="text-danger ml-1" title="จำเป็นต้องระบุ">*</span>
+                </CardTitle>
               </div>
               <span
-                className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                className={`whitespace-nowrap flex-shrink-0 text-xs font-bold px-3 py-1 rounded-full tabular-nums ${
                   photos.length < 2
                     ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                    : 'bg-primary-50 text-primary-700'
+                    : 'bg-primary-50 text-primary-700 border border-primary-200'
                 }`}
               >
-                {photos.length} / 5 รูป
+                {photos.length} / 5 {locale === 'th' ? 'รูป' : 'photos'}
               </span>
             </div>
-            <p className="text-xs text-surface-500 mt-1">
-              {t('addPet.photosDesc')}
-            </p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-surface-500">
+              <span className="inline-flex items-center font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md text-[11px] whitespace-nowrap">
+                {locale === 'th' ? 'ขั้นต่ำ 2 รูป · สูงสุด 5 รูป' : 'Min 2 · Max 5 photos'}
+              </span>
+              <span>
+                {t('addPet.photosDesc')}
+              </span>
+            </div>
           </CardHeader>
 
           <CardContent className="p-0 space-y-4">

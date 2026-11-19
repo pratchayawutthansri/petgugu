@@ -97,7 +97,7 @@
     "weightLabel": "Weight (kg) *",
     "healthLabel": "Health Notes / Allergies",
     "healthPlaceholder": "Detail any allergies, medication, or special care instructions...",
-    "photosTitle": "Upload Pet Photos (Min 2, Max 5) *",
+    "photosTitle": "Upload Pet Photos *",
     "photosDesc": "Choose clear photos showing face and distinct markings. The first photo will be primary.",
     "setPrimary": "Set Primary",
     "removePhoto": "Remove",
