@@ -12,6 +12,7 @@ import {
   Cpu,
   Settings,
   ShieldAlert,
+  Boxes,
   LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -55,6 +56,11 @@ export const Sidebar = React.memo(function Sidebar() {
         name: t('nav.admin'),
         href: '/admin',
         icon: ShieldAlert,
+      });
+      items.push({
+        name: t('nav.erp', 'ระบบ ERP หลังบ้าน'),
+        href: '/erp',
+        icon: Boxes,
       });
     }
     return items;

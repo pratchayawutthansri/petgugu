@@ -113,7 +113,7 @@ graph TD
 
 ทีมพัฒนาได้ดำเนินการพัฒนาส่วน **Phase 1: Web Application** ครบถ้วน 100% ตามข้อกำหนด พร้อมระบบจำลองข้อมูลเสมือนจริง (**Demo Mode**) ที่รองรับการต่อยอดเชื่อมโยงกับฮาร์ดแวร์จริงใน Phase 2:
 
-### 1. หน้าเว็บครบทั้ง 11 หน้า (11 Fully Functional Pages):
+### 1. หน้าเว็บครบทั้ง 12 หน้า (12 Fully Functional Pages):
 1. **🏠 [Landing Page](src/app/page.tsx) (`/`)**:
    - ออกแบบเมนูด้านบนเป็น **Floating Capsule Pill Island Navbar** สไตล์โมเดิร์น
    - ส่วน Hero พร้อมระบบจำลอง **Interactive Live Telemetry Simulator** สลับดูสุนัข "โมจิ (Golden)" / "ลัคกี้ (Shiba)" ได้ทันที
@@ -142,6 +142,12 @@ graph TD
     - หน้าที่เปิดเมื่อสแกน QR Tag บนปลอกคอ — แสดงรูป ชื่อ เบอร์โทรติดต่อเจ้าของ, ปุ่มโทรออกได้ทันที (`tel:`), และฟอร์มแจ้งเบาะแสการพบ (**ไม่เปิดเผยพิกัดสดหรือข้อมูลส่วนตัวที่อ่อนไหว**)
 11. **🛡️ [Admin Dashboard](src/app/(app)/admin/page.tsx) (`/admin`)**:
     - สถิติภาพรวม Users, Pets, Devices, Active Telemetry และตารางตรวจสอบความพร้อมของระบบ (System Health Check)
+12. **📦 [Fleet ERP & Telematics Analytics](src/app/(app)/erp/page.tsx) (`/erp`)**:
+    - **ระบบบริหารจัดการทรัพยากรฮาร์ดแวร์และวิเคราะห์ข้อมูลหลังบ้าน (Enterprise Resource Planning & IoT Fleet Analytics)**
+    - ตรวจสอบสถานะสต็อกฮาร์ดแวร์ล็อตการผลิต (Batch Provisioning & Serial/IMEI Tracking)
+    - วิเคราะห์อัตราการเสื่อมของแบตเตอรี่ (Battery Degradation %), อัตราหลุดขอบเขต (Geofence Breach Rate), และความเร็วในการจับสัญญาณดาวเทียม (TTFF)
+    - บริหารจัดการแพ็กเกจซิมเซลลูลาร์ IoT (AIS NB-IoT, True IoT, DTAC Cat-M1) และปริมาณดาต้า (MB/month)
+    - คำนวณต้นทุนต่อหน่วยโครงสร้างอุตสาหกรรม (Bill of Materials - BOM Breakdown) และระบบ Export ตารางวิเคราะห์ข้อมูลเป็น CSV
 
 ---
 
@@ -280,6 +286,35 @@ docker compose up -d
 - **Safe Zone Range Slider**: พัฒนาระบบปรับตั้งค่ารัศมีพื้นที่ปลอดภัยแบบสไลเดอร์ (50 – 5,000 เมตร) พร้อมปุ่มลัด (Quick Chips: 50m, 100m, 300m, 500m, 1km, 2km) และคำนวณซูมแผนที่ `fitBounds` อัตโนมัติ
 - **Mobile Photo Compressor**: ระบบเลือกรูปสัตว์เลี้ยงหลายรูปพร้อมกันจากคลังภาพหรือกล้องหลังมือถือ พร้อมบีบอัดรูปภาพฝั่งเบราว์เซอร์ (Client-side Canvas Compression) ป้องกัน memory leak
 - **Context Memoization & SWR Fingerprinting**: ป้องกันปัญหาการเรนเดอร์ซ้ำซ้อนบนหน้า Dashboard และแผนที่ Leaflet
+- **Mobile Responsive Layout**: จัดระเบียบหัวข้ออัปโหลดภาพสัตว์เลี้ยงบนจอมือถือขนาดเล็กให้ตัดคำและจัดแถวอย่างสวยงาม (`flex-col sm:flex-row`) ไม่ให้ Badge นับจำนวนรูปเบียดหรือตกหล่น
+
+### 5. 📦 ระบบ ERP หลังบ้านและแดชบอร์ดตารางวิเคราะห์ (IoT Fleet ERP & Telematics Analytics)
+พัฒนาหน้าระบบบริหารทรัพยากรฮาร์ดแวร์หลังบ้านแบบครบวงจร (`/erp`) พร้อมชุดข้อมูลจำลองมาตรฐานอุตสาหกรรม (`src/data/erp-data.ts`) สำหรับทีมปฏิบัติการและผู้ดูแลระบบ:
+- **4 KPI สรุปภาพรวมระดับผู้บริหาร (Executive Overview Metrics)**:
+  - **คลังอุปกรณ์ฮาร์ดแวร์**: 128 เครื่อง (ทำงานจริงในสนาม: 94 | สต็อกพร้อมใช้งาน: 26 | ซ่อมบำรุง/RMA: 8)
+  - **สุนัขในความคุ้มครอง**: 94 ตัว (อัตรากู้คืนสำเร็จ 100%, เวลาช่วยเหลือเฉลี่ย 18.5 นาที)
+  - **ปริมาณพิกัด Telemetry Pings**: 1,482,920 ครั้ง (ซิมแอ็กทีฟ: 102 ซิม, ปริมาณดาต้ารวม 4.35 GB)
+  - **สุขภาพแบตเตอรี่ & ต้นทุน**: สุขภาพแบตเตอรี่เฉลี่ยทั้งฝูง 82.4% (ต้นทุนวัสดุเฉลี่ย BOM: ฿1,450 / เครื่อง)
+- **4 แท็บตารางและการวิเคราะห์ข้อมูล (Interactive Tabbed Modules)**:
+  1. 📦 **คลังและฝูงอุปกรณ์ (Hardware Fleet Table)**: ค้นหาตาม Serial, Box Code, IMEI, ชื่อสุนัข, เบอร์เจ้าของ พร้อมตัวกรองสถานะ (Active, Ready, Maintenance, Reserved) และตัวกรองค่ายซิม (AIS, True, DTAC) พร้อมโมดอลดูสเปกเชิงลึกและส่งเคลม RMA
+  2. 📊 **แดชบอร์ดสถิติ & เหตุการณ์ (Incidents & Telemetry Analytics)**: บันทึกประวัติเหตุการณ์หลุดออกนอก Safe Zone, สัญญาณขาดหาย, แจ้งเตือนแบตเตอรี่ต่ำ และสถิติวิศวกรรม (TTFF 3.2s ด้วย A-GPS, Packet Loss <0.6%, Geofence Accuracy 99.4%)
+  3. 📶 **เครือข่าย & ซิมการ์ด IoT (Cellular & SIM Fleet Management)**: วิเคราะห์แพ็กเกจซิมการ์ด AIS NB-IoT (62 ซิม), True IoT (28 ซิม), DTAC Cat-M1 (12 ซิม), ปริมาณดาต้าเฉลี่ยต่อเดือน และต้นทุนค่าบริการเครือข่าย
+  4. 💰 **โครงสร้างต้นทุน BOM (Bill of Materials Breakdown)**: แจกแจงต้นทุนชิ้นส่วนอุตสาหกรรมรายชิ้น (ESP32-S3, SIM7080G, AXP2101 PMU, แบตเตอรี่ Li-Po, เคสกันน้ำ IP67, สายรัดปลอกคอ, จี้ QR Tag) รวม ฿1,450 / ชุด
+- **ฟังก์ชันขึ้นทะเบียนล็อตการผลิตใหม่ (Batch Provisioning Modal)**: สร้างรหัส Serial Number, Box Code QR, แมปซิมการ์ด และคำนวณต้นทุนรวมอัตโนมัติ
+- **ระบบส่งออกข้อมูล (Export to CSV)**: ดาวน์โหลดตารางข้อมูลฮาร์ดแวร์ทั้งหมดเป็นไฟล์ CSV ได้ทันทีเพียงคลิกเดียว
+
+### 6. 🔬 ผลการวิจัยโครงการเทียบเคียงบน GitHub (GitHub Open-Source Benchmarks & Prior Art)
+จากการสืบค้นและสำรวจ Repositories บน GitHub ที่พัฒนาระบบใกล้เคียงกัน พบแนวทางและสถาปัตยกรรมที่นำมาเทียบเคียงดังนี้:
+1. **[Circuit-Digest/Smart-Pet-Tracker-System](https://github.com/Circuit-Digest/Smart-Pet-Tracker-System)**:
+   - โครงการ IoT Pet Tracker บน ESP32 + SIM800L/A9G ส่งพิกัดขึ้นคลาวด์และแจ้งเตือนผ่าน SMS/HTTP มีจุดอ่อนคือใช้โมเด็ม 2G แบบเก่า และไม่มีระบบบริหารสต็อกฮาร์ดแวร์หลังบ้าน
+2. **[Nicolanz/pet_tracker](https://github.com/Nicolanz/pet_tracker)**:
+   - ระบบติดตามสัตว์เลี้ยงด้วย GPS Collar + Flask + PostgreSQL + Google Maps มีแผนที่และพิกัด แต่ขาดระบบ Safe Zone เชิงรุก และไม่มีหน้าเว็บสาธารณะสำหรับการสแกนจี้ QR
+3. **[Traccar](https://github.com/traccar/traccar)** & **[OpenRemote](https://github.com/openremote/openremote)**:
+   - แพลตฟอร์มมาตรฐานสากลด้าน IoT Telematics & Fleet Asset Management ที่มีความสามารถในการจัดการอุปกรณ์จำนวนมาก (Multi-device Provisioning), คำนวณ Geofence Event และเก็บประวัติ Telemetry ที่ Paws&Co. นำแนวคิดมาปรับใช้กับโมเดลสัตว์เลี้ยง
+4. **[DianaFarhat29/PetCare-Tracker](https://github.com/DianaFarhat29/PetCare-Tracker)** & **[Sedefkjamili/PetopiaAnimalShelter](https://github.com/Sedefkjamili/PetopiaAnimalShelter)**:
+   - ตัวอย่างระบบ ERP และบันทึกประวัติสัตว์เลี้ยง/ศูนย์พักพิงสัตว์ ที่เน้นเรื่องข้อมูลสุขภาพ ประวัติการรักษา และการดูแล แต่ไม่ได้เชื่อมต่อกับสัญญาณพิกัด GPS/IoT สด
+5. **เกณฑ์มาตรฐานระดับอุตสาหกรรม (Commercial IoT Industry Benchmarks)**:
+   - **Tractive GPS** & **Fi Smart Collar**: แบรนด์ระดับโลกที่ใช้โมเดลคล้ายคลึงกับ Paws&Co. คือมีทั้งฮาร์ดแวร์ปลอกคอ, การส่งข้อมูลผ่าน LTE-M/NB-IoT, ระบบหลังบ้านสำหรับ Provisioning อุปกรณ์ และหน้า Emergency Public Profile สำหรับผู้พบเห็นสุนัขสแกน QR Tag
 
 ---
 
