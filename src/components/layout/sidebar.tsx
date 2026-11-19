@@ -58,8 +58,8 @@ export const Sidebar = React.memo(function Sidebar() {
         icon: ShieldAlert,
       });
       items.push({
-        name: t('nav.erp', 'ระบบ ERP หลังบ้าน'),
-        href: '/erp',
+        name: t('nav.backoffice', 'ระบบ ERP Backoffice'),
+        href: '/backoffice',
         icon: Boxes,
       });
     }

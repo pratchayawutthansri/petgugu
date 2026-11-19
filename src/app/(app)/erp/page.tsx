@@ -183,6 +183,11 @@ export default function ErpBackofficePage() {
           >
             + ผลิตล็อตใหม่ (New Batch)
           </Button>
+          <Link href="/backoffice">
+            <Button variant="secondary" size="sm" rightIcon={<ExternalLink className="w-3.5 h-3.5" />}>
+              เข้าสู่ Backoffice Hub
+            </Button>
+          </Link>
           <Link href="/admin">
             <Button variant="ghost" size="sm" rightIcon={<ExternalLink className="w-3.5 h-3.5" />}>
               หน้าแอดมิน

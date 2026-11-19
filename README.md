@@ -113,7 +113,7 @@ graph TD
 
 ทีมพัฒนาได้ดำเนินการพัฒนาส่วน **Phase 1: Web Application** ครบถ้วน 100% ตามข้อกำหนด พร้อมระบบจำลองข้อมูลเสมือนจริง (**Demo Mode**) ที่รองรับการต่อยอดเชื่อมโยงกับฮาร์ดแวร์จริงใน Phase 2:
 
-### 1. หน้าเว็บครบทั้ง 12 หน้า (12 Fully Functional Pages):
+### 1. หน้าเว็บครบทั้ง 16 หน้า (16 Fully Functional Pages):
 1. **🏠 [Landing Page](src/app/page.tsx) (`/`)**:
    - ออกแบบเมนูด้านบนเป็น **Floating Capsule Pill Island Navbar** สไตล์โมเดิร์น
    - ส่วน Hero พร้อมระบบจำลอง **Interactive Live Telemetry Simulator** สลับดูสุนัข "โมจิ (Golden)" / "ลัคกี้ (Shiba)" ได้ทันที
@@ -148,6 +148,16 @@ graph TD
     - วิเคราะห์อัตราการเสื่อมของแบตเตอรี่ (Battery Degradation %), อัตราหลุดขอบเขต (Geofence Breach Rate), และความเร็วในการจับสัญญาณดาวเทียม (TTFF)
     - บริหารจัดการแพ็กเกจซิมเซลลูลาร์ IoT (AIS NB-IoT, True IoT, DTAC Cat-M1) และปริมาณดาต้า (MB/month)
     - คำนวณต้นทุนต่อหน่วยโครงสร้างอุตสาหกรรม (Bill of Materials - BOM Breakdown) และระบบ Export ตารางวิเคราะห์ข้อมูลเป็น CSV
+13. **🗺️ [Backoffice: ติดตามการเคลื่อนไหว](src/app/(app)/backoffice/movement/page.tsx) (`/backoffice/movement`)**:
+    - มอนิเตอร์ตำแหน่งการเคลื่อนไหวของสุนัขและปลอกคอทุกตัวพร้อมกันบนแผนที่ดาวเทียม Leaflet
+    - ระบบจำลองการเคลื่อนไหวสด (Live Telemetry Simulator) ตรวจสอบความเร็ว (km/h), ทิศทาง, เส้นทางย้อนหลัง (Breadcrumbs), และสถานะใน/นอกเขตปลอดภัย
+14. **📋 [Backoffice: ข้อมูลอุปกรณ์และสเปก](src/app/(app)/backoffice/data/page.tsx) (`/backoffice/data`)**:
+    - ฐานข้อมูลฮาร์ดแวร์รายเครื่อง (Master Device Registry): Serial Number, Box Code QR, IMEI, MAC Address, ค่ายซิม (AIS / True / DTAC), สุขภาพแบตเตอรี่ และสตรีมดูโค้ด JSON Telemetry สด พร้อมส่งออก CSV
+15. **🚨 [Backoffice: การแจ้งปัญหาและงานซ่อม](src/app/(app)/backoffice/issues/page.tsx) (`/backoffice/issues`)**:
+    - ระบบจัดการข้อร้องเรียนและงานซ่อมบำรุงฮาร์ดแวร์ (Issue Reporting & Ticket Dispatch): แบตเตอรี่เสื่อม, สัญญาณเน็ตหลุด, เคสแตกร้าว, หรือสุนัขพลัดหลง
+    - ฟังก์ชันเปิดเคสใหม่ (+ Create Ticket), เปลี่ยนสถานะงานซ่อม (Open, In Progress, Resolved), มอบหมายช่าง และบันทึกประวัติการเปลี่ยนอะไหล่ RMA
+16. **📈 [Backoffice: ดูการใช้งานและสถิติ](src/app/(app)/backoffice/usage/page.tsx) (`/backoffice/usage`)**:
+    - วิเคราะห์พฤติกรรมการใช้งานเชิงลึก: กราฟระยะทางสะสมรายวัน (km/day), ชั่วโมงการเปิดเครื่องใช้งาน, ปริมาณการใช้ดาต้าซิมรายค่าย, อัตราการเสื่อมของแบตเตอรี่ (Battery Degradation Index), และตารางอันดับสุนัขที่มีกิจกรรมมากที่สุด (Top Active Dogs)
 
 ---
 
