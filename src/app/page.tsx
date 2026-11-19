@@ -591,46 +591,51 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* -------------------- FAQ Section -------------------- */}
-      <section id="faq" className="py-18 sm:py-24 px-4 sm:px-6 lg:px-8 bg-white border-t border-neutral-100">
-        <div className="max-w-3xl mx-auto">
+      {/* -------------------- FAQ Section (Modern Rounded Cards - Image 2 Style) -------------------- */}
+      <section id="faq" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 bg-[#F7F4EE] border-t border-[#ECE7DC]">
+        <div className="max-w-4xl mx-auto">
           {/* Section Header */}
-          <div className="text-center max-w-2xl mx-auto mb-14 space-y-3">
+          <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-14 space-y-3">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-neutral-950 tracking-tight">
               {locale === 'th' ? 'คำถามที่พบบ่อย' : 'Frequently Asked Questions'}
             </h2>
-            <p className="text-xs sm:text-sm text-neutral-500 leading-relaxed">
+            <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
               {locale === 'th'
                 ? 'ข้อสงสัยเกี่ยวกับการทำงานของระบบติดตามและปลอกคออัจฉริยะ'
                 : 'Common questions about the tracking system and smart collar features.'}
             </p>
           </div>
 
-          {/* Clean Border-Divided Accordion List */}
-          <div className="divide-y divide-neutral-200/90 border-y border-neutral-200/90">
+          {/* Individual Rounded Pill Cards (Inspired by Image 2) */}
+          <div className="space-y-3.5 sm:space-y-4">
             {faqItems.map((item, idx) => {
               const isOpen = openFaq === idx;
               return (
-                <div key={idx} className="group transition-colors">
+                <div
+                  key={idx}
+                  className={`bg-white rounded-2xl sm:rounded-[22px] transition-all duration-200 overflow-hidden ${
+                    isOpen
+                      ? 'shadow-[0_4px_20px_rgba(0,0,0,0.06)] ring-1 ring-black/5'
+                      : 'shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)]'
+                  }`}
+                >
                   <button
                     type="button"
                     onClick={() => toggleFaq(idx)}
-                    className="w-full py-5 sm:py-6 text-left flex items-center justify-between gap-4 transition-colors"
+                    className="w-full px-6 sm:px-8 py-5 sm:py-5.5 text-left flex items-center justify-between gap-4 transition-colors cursor-pointer"
                   >
-                    <span className={`text-sm sm:text-base font-semibold transition-colors ${
-                      isOpen ? 'text-black' : 'text-neutral-800 group-hover:text-black'
-                    }`}>
+                    <span className="text-sm sm:text-base font-bold text-neutral-900 leading-snug">
                       {locale === 'th' ? item.q : item.qEn}
                     </span>
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-transform duration-200 ${
-                      isOpen ? 'bg-black text-white rotate-180' : 'bg-neutral-100 text-neutral-500 group-hover:bg-neutral-200 group-hover:text-neutral-800'
-                    }`}>
-                      <ChevronDown className="w-4 h-4" />
-                    </div>
+                    <ChevronDown
+                      className={`w-5 h-5 flex-shrink-0 text-[#8C6D46] transition-transform duration-300 ease-out ${
+                        isOpen ? 'rotate-180' : ''
+                      }`}
+                    />
                   </button>
 
                   {isOpen && (
-                    <div className="pb-6 pr-6 text-xs sm:text-sm text-neutral-600 leading-relaxed animate-fade-in">
+                    <div className="px-6 sm:px-8 pb-5 sm:pb-6 pt-1 text-xs sm:text-sm text-neutral-600 leading-relaxed border-t border-neutral-100/80 animate-fade-in">
                       {locale === 'th' ? item.a : item.aEn}
                     </div>
                   )}
